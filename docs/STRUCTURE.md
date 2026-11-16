@@ -7,6 +7,7 @@ a decision in `docs/adr/` and an entry in `infra/scripts/check-structure.mjs`.
 ```
 apps/
   web/                 Next.js: interface for landlords, later portals
+    messages/          interface texts, one JSON file per locale
   api/                 NestJS: modular monolith
     src/modules/       one folder per domain module, see below
   worker/              background jobs (bank sync, OCR, PDF, delivery)
@@ -16,9 +17,9 @@ packages/
     fixtures/          reviewed settlement cases as test data
   db/                  SQL migrations, tenant isolation, ledger posting
   integrations/        adapters to external services (banking, ocr, email, payments)
-  contracts/           API schemas and shared types            (not created yet)
-  pdf-templates/       HTML templates for settlements, letters (not created yet)
-  ui/                  shared interface components             (not created yet)
+  contracts/           shared types and API schemas, supported locales
+  pdf-templates/       localized HTML templates for letters and settlements
+  ui/                  shared interface components (not created yet)
 docs/
   adr/                 architecture decisions, one file per decision
   domain-rules/        rules and sources for BetrKV, HeizkostenV, CO2KostAufG
@@ -60,3 +61,12 @@ of the API may import.
   deleted; a correction is a reversing entry. Every entry balances to zero.
 - Migrations are SQL files in `packages/db/migrations/`. Once a migration has
   run on a shared environment it is never changed; corrections are new files.
+
+## Languages
+
+- Supported locales are defined once, in `packages/contracts/src/locale.ts`.
+- No user-visible text in code. Interface texts live in `apps/web/messages/`,
+  document texts in `packages/pdf-templates/src/locales/`. German is the
+  reference catalog; tests fail when another locale misses a key or placeholder.
+- The API returns error codes, not sentences; the interface translates them.
+- Amounts and dates are formatted with the locale, never by hand.

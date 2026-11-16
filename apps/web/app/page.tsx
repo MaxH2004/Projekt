@@ -1,8 +1,11 @@
-export default function HomePage() {
+import { getTranslate } from "../lib/locale";
+
+export default async function HomePage() {
+  const { t } = await getTranslate();
   return (
     <main>
-      <h1>Property Management</h1>
-      <p>The foundation is in place. The interface follows with the first modules.</p>
+      <h1>{t("app.name")}</h1>
+      <p>{t("home.intro")}</p>
     </main>
   );
 }
