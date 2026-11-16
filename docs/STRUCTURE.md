@@ -17,7 +17,8 @@ packages/
     src/rules/de/      versioned rule sets per settlement period
     fixtures/          reviewed settlement cases as test data
   db/                  SQL migrations, tenant isolation, ledger posting
-  integrations/        adapters to external services (banking, ocr, email, payments)
+  integrations/        ports to external services: banking, email,
+                       document-extraction, subscription-billing
   contracts/           shared types and API schemas, supported locales
   pdf-templates/       localized HTML templates for letters and settlements
   ui/                  shared interface components (not created yet)
@@ -25,6 +26,7 @@ docs/
   adr/                 architecture decisions, one file per decision
   domain-rules/        rules and sources for BetrKV, HeizkostenV, CO2KostAufG
   STRUCTURE.md         this document
+  BACKLOG.md           everything open, skipped or simplified
 infra/
   compose.yaml         local database
   scripts/             check and operations scripts

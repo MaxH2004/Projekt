@@ -1,3 +1,5 @@
+import { IntegrationNotConnectedError } from "../not-connected.js";
+
 /**
  * Port for bank data. The application only knows this contract; the provider
  * behind it (PSD2 service, file import) is interchangeable.
@@ -29,9 +31,9 @@ export interface BankDataProvider {
   fetchTransactions(providerAccountId: string, from: string, to: string): Promise<BankTransaction[]>;
 }
 
-export class BankProviderNotConnectedError extends Error {
+export class BankProviderNotConnectedError extends IntegrationNotConnectedError {
   constructor(kind: string) {
-    super(`Bank provider "${kind}" is prepared but not connected`);
+    super("bank", kind);
     this.name = "BankProviderNotConnectedError";
   }
 }

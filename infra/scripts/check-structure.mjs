@@ -13,7 +13,7 @@ const ALLOWED = {
   ],
   apps: ["web", "api", "worker"],
   packages: ["settlement-engine", "db", "contracts", "integrations", "pdf-templates", "ui"],
-  docs: ["adr", "domain-rules", "STRUCTURE.md"],
+  docs: ["adr", "domain-rules", "STRUCTURE.md", "BACKLOG.md"],
   infra: ["scripts", "compose.yaml"],
   tests: ["e2e"],
   "apps/api/src/modules": [

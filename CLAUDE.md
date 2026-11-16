@@ -15,6 +15,8 @@ Software for rental property management, first for private landlords in Germany.
   decision of 2026-11-16) but must be calculated by hand independently of the
   code and carry `"reviewed": false` until an expert has checked them.
 - No real renter or bank data and no credentials in the repository.
+- Whatever you skip, defer or simplify goes into `docs/BACKLOG.md` in the same
+  commit. Remove an item only when it is done and verified.
 
 ## Commands
 
