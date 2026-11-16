@@ -1,7 +1,7 @@
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedChartOfAccounts, SKR04_RENTAL_SUBSET, withTenant } from "./index.js";
-import { asApp, resetDatabase, testDatabaseUrl, type SeededTenant } from "./test-support.js";
+import { resetDatabase, testDatabaseUrl, type SeededTenant } from "./test-support.js";
 
 const pool = new pg.Pool({ connectionString: testDatabaseUrl() });
 let a: SeededTenant;
@@ -26,11 +26,11 @@ describe("SKR 04 subset", () => {
   });
 
   it("is created once per tenant and is safe to repeat", async () => {
-    const seed = (tenant: string) => withTenant(pool, tenant, (c) => seedChartOfAccounts(c, tenant, SKR04_RENTAL_SUBSET), asApp);
+    const seed = (tenant: string) => withTenant(pool, tenant, (c) => seedChartOfAccounts(c, tenant, SKR04_RENTAL_SUBSET));
     expect(await seed(a.org)).toEqual(SKR04_RENTAL_SUBSET.map((acc) => acc.code).sort());
     expect(await seed(a.org)).toEqual([]);
     expect(await seed(b.org)).toHaveLength(SKR04_RENTAL_SUBSET.length);
-    const bank = await withTenant(pool, a.org, (c) => c.query("SELECT name, type FROM account WHERE code = '1800'"), asApp);
+    const bank = await withTenant(pool, a.org, (c) => c.query("SELECT name, type FROM account WHERE code = '1800'"));
     expect(bank.rows).toEqual([{ name: "Bank", type: "asset" }]);
   });
 });

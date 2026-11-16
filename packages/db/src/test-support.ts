@@ -2,8 +2,6 @@ import pg from "pg";
 import { migrate } from "./migrate.js";
 import { withTenant } from "./tenant.js";
 
-export const asApp = { role: "hv_app" } as const;
-
 export function testDatabaseUrl(): string {
   const url = process.env.TEST_DATABASE_URL;
   if (!url) throw new Error("TEST_DATABASE_URL is not set");
@@ -59,7 +57,5 @@ async function seedTenant(admin: pg.Client, pool: pg.Pool, name: string): Promis
       );
       const unit = await one("INSERT INTO unit (tenant_id, building_id, label) VALUES ($1, $2, 'Ground floor left') RETURNING id", [org, building]);
       return { org, property, building, unit };
-    },
-    asApp,
-  );
+    });
 }

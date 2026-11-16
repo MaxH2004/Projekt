@@ -1,8 +1,10 @@
 import swc from "unplugin-swc";
 import { defineConfig } from "vitest/config";
 
-// NestJS needs decorator metadata; SWC emits it, esbuild does not.
 export default defineConfig({
+  // The test files share one database and reset its schema.
+  test: { fileParallelism: false, testTimeout: 20_000 },
+  // NestJS needs decorator metadata; SWC emits it, esbuild does not.
   plugins: [
     swc.vite({
       jsc: {

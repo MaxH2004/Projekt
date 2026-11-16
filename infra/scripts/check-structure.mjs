@@ -17,7 +17,7 @@ const ALLOWED = {
   infra: ["scripts", "compose.yaml"],
   tests: ["e2e"],
   "apps/api/src/modules": [
-    "health", "organization", "property", "tenancy", "metering", "finance",
+    "health", "identity", "organization", "property", "tenancy", "metering", "finance",
     "banking", "documents", "settlement", "deadlines", "tax", "subscription",
   ],
 };

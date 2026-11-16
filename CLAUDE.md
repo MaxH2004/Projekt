@@ -19,7 +19,7 @@ Software for rental property management, first for private landlords in Germany.
 - `pnpm install`
 - `pnpm verify` – structure, build, types, boundaries, tests
 - `pnpm db:migrate` – needs `DATABASE_URL`
-- Tests in `packages/db` need `TEST_DATABASE_URL`; the database name must end in
+- Tests in `packages/db` and `apps/api` need `TEST_DATABASE_URL`; the database name must end in
   `_test` because the tests reset the schema. Local database:
   `docker compose -f infra/compose.yaml up -d`
 
@@ -30,3 +30,5 @@ Software for rental property management, first for private landlords in Germany.
 - Money as `bigint` in cents. Splits only through `allocate` from the engine.
 - Ledger postings only through `postJournalEntry` / `reverseJournalEntry` from
   `@hv/db`.
+- API errors are codes from `@hv/contracts` (`ApiError`), never sentences.
+- No user-visible text in code; see "Languages" in `docs/STRUCTURE.md`.

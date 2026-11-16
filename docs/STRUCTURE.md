@@ -10,6 +10,7 @@ apps/
     messages/          interface texts, one JSON file per locale
   api/                 NestJS: modular monolith
     src/modules/       one folder per domain module, see below
+    src/common/        configuration, database pool, error format
   worker/              background jobs (bank sync, OCR, PDF, delivery)
 packages/
   settlement-engine/   pure settlement logic
@@ -33,7 +34,7 @@ tests/e2e/             end-to-end tests through the interface
 
 ## Allowed API modules
 
-`health`, `organization`, `property`, `tenancy`, `metering`, `finance`, `banking`,
+`health`, `identity`, `organization`, `property`, `tenancy`, `metering`, `finance`, `banking`,
 `documents`, `settlement`, `deadlines`, `tax`, `subscription`
 
 Every module has an `index.ts`. It is the only file other modules and the rest
@@ -52,7 +53,10 @@ of the API may import.
 ## Rules for data
 
 - Every domain table carries `tenant_id` and an RLS policy, enabled and forced.
-  A test fails if a table lacks it. References between tables use composite
+  A test fails if a table lacks it. The API reaches tenant data only through
+  `withTenant` (role `hv_app`).
+- Users, memberships and sessions are not tenant data. They are reachable only
+  through `withIdentity` (role `hv_auth`), which in turn cannot read tenant data. References between tables use composite
   foreign keys `(tenant_id, id)`.
 - Money is an integer in cents (`bigint`), never a floating-point number.
 - Whatever changes and is settled is versioned in time (date range; the

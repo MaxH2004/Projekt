@@ -1,7 +1,7 @@
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { postJournalEntry, reverseJournalEntry, withTenant } from "./index.js";
-import { asAdmin, asApp, resetDatabase, testDatabaseUrl, type SeededTenant } from "./test-support.js";
+import { asAdmin, resetDatabase, testDatabaseUrl, type SeededTenant } from "./test-support.js";
 
 const pool = new pg.Pool({ connectionString: testDatabaseUrl() });
 let a: SeededTenant;
@@ -12,10 +12,10 @@ let rentIncome: string;
 let bankOfB: string;
 let rentEntry: string;
 
-const inA = <T>(fn: (c: pg.PoolClient) => Promise<T>) => withTenant(pool, a.org, fn, asApp);
+const inA = <T>(fn: (c: pg.PoolClient) => Promise<T>) => withTenant(pool, a.org, fn);
 const createAccount = (tenant: string, code: string, name: string, type: string) =>
   withTenant(pool, tenant, async (c) =>
-    (await c.query<{ id: string }>("INSERT INTO account (tenant_id, code, name, type) VALUES ($1, $2, $3, $4) RETURNING id", [tenant, code, name, type])).rows[0]!.id, asApp);
+    (await c.query<{ id: string }>("INSERT INTO account (tenant_id, code, name, type) VALUES ($1, $2, $3, $4) RETURNING id", [tenant, code, name, type])).rows[0]!.id);
 const linesOf = (entry: string) =>
   inA(async (c) => (await c.query("SELECT account_id, amount_cents FROM journal_line WHERE entry_id = $1 ORDER BY amount_cents", [entry])).rows);
 const entryCount = () => inA(async (c) => Number((await c.query("SELECT count(*) AS n FROM journal_entry")).rows[0].n));
@@ -178,13 +178,13 @@ describe("tenant isolation", () => {
       accounts: (await c.query("SELECT code FROM account")).rows,
       entries: (await c.query("SELECT 1 FROM journal_entry")).rowCount,
       lines: (await c.query("SELECT 1 FROM journal_line")).rowCount,
-    }), asApp);
+    }));
     expect(rows).toEqual({ accounts: [{ code: "1000" }], entries: 0, lines: 0 });
   });
 
   it("rejects reversing another tenant's entry", async () => {
     await expect(
-      withTenant(pool, b.org, (c) => reverseJournalEntry(c, b.org, rentEntry, { bookingDate: "2025-04-12", description: "Foreign reversal" }), asApp),
+      withTenant(pool, b.org, (c) => reverseJournalEntry(c, b.org, rentEntry, { bookingDate: "2025-04-12", description: "Foreign reversal" })),
     ).rejects.toThrow(/foreign key/);
   });
 

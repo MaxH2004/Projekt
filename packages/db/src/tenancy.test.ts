@@ -1,14 +1,14 @@
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { withTenant } from "./index.js";
-import { asApp, resetDatabase, testDatabaseUrl, type SeededTenant } from "./test-support.js";
+import { resetDatabase, testDatabaseUrl, type SeededTenant } from "./test-support.js";
 
 const pool = new pg.Pool({ connectionString: testDatabaseUrl() });
 let a: SeededTenant;
 let b: SeededTenant;
 let tenancyId: string;
 
-const inA = <T>(fn: (c: pg.PoolClient) => Promise<T>) => withTenant(pool, a.org, fn, asApp);
+const inA = <T>(fn: (c: pg.PoolClient) => Promise<T>) => withTenant(pool, a.org, fn);
 const insertTenancy = (unit: string, term: string) =>
   inA(async (c) => (await c.query<{ id: string }>("INSERT INTO tenancy (tenant_id, unit_id, term) VALUES ($1, $2, $3) RETURNING id", [a.org, unit, term])).rows[0]!.id);
 const insertRent = (kind: string, cents: number, valid: string) =>
@@ -87,7 +87,7 @@ describe("rent components", () => {
   });
 
   it("is invisible to other tenants", async () => {
-    const rows = await withTenant(pool, b.org, (c) => c.query("SELECT 1 FROM rent_component UNION ALL SELECT 1 FROM tenancy UNION ALL SELECT 1 FROM person"), asApp);
+    const rows = await withTenant(pool, b.org, (c) => c.query("SELECT 1 FROM rent_component UNION ALL SELECT 1 FROM tenancy UNION ALL SELECT 1 FROM person"));
     expect(rows.rowCount).toBe(0);
   });
 });
