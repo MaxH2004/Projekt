@@ -1,6 +1,6 @@
 import type { BankAccountRef, BankDataProvider, BankTransaction } from "./port.js";
 
-/** Anbieter mit festen Daten für Tests und lokale Entwicklung. */
+/** Provider with fixed data for tests and local development. */
 export class FakeBankDataProvider implements BankDataProvider {
   readonly kind = "fake";
 
@@ -15,7 +15,7 @@ export class FakeBankDataProvider implements BankDataProvider {
 
   async fetchTransactions(providerAccountId: string, from: string, to: string): Promise<BankTransaction[]> {
     const all = this.transactions[providerAccountId];
-    if (!all) throw new Error(`Unbekanntes Konto: ${providerAccountId}`);
+    if (!all) throw new Error(`Unknown account: ${providerAccountId}`);
     return all.filter((t) => t.bookingDate >= from && t.bookingDate <= to);
   }
 }

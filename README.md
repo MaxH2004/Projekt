@@ -1,6 +1,6 @@
-# Hausverwaltung
+# Property management
 
-Siehe `docs/STRUKTUR.md` für den Aufbau und `CLAUDE.md` für Befehle und Regeln.
+See `docs/STRUCTURE.md` for the layout and `CLAUDE.md` for commands and rules.
 
 ```bash
 pnpm install

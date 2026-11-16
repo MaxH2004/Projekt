@@ -1,11 +1,11 @@
--- Grundgerüst: Mandant, Objekt, Gebäude, Einheit, zeitlich versionierte Fläche.
--- Jede fachliche Tabelle trägt tenant_id (Mandant der Software, nicht der Mieter)
--- und ist per Row-Level Security auf den Mandanten der Transaktion begrenzt.
+-- Foundation: organization, property, building, unit, time-versioned area.
+-- Every domain table carries tenant_id (the software's customer, not the renter)
+-- and is limited by row-level security to the tenant of the transaction.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
--- Rolle der Anwendung. Sie besitzt keine Tabellen und kann RLS nicht umgehen.
--- Login-Benutzer der Umgebung werden Mitglied dieser Rolle.
+-- Application role. It owns no tables and cannot bypass RLS.
+-- The environment's login users become members of this role.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'hv_app') THEN
@@ -13,7 +13,7 @@ BEGIN
   END IF;
 END $$;
 
--- Mandant der aktuellen Transaktion; NULL, wenn keiner gesetzt ist.
+-- Tenant of the current transaction; NULL when none is set.
 CREATE FUNCTION current_tenant_id() RETURNS uuid
   LANGUAGE sql STABLE
   AS $$ SELECT nullif(current_setting('app.tenant_id', true), '')::uuid $$;
@@ -28,7 +28,7 @@ CREATE TABLE property (
   id          uuid NOT NULL DEFAULT gen_random_uuid(),
   tenant_id   uuid NOT NULL REFERENCES organization (id),
   name        text NOT NULL CHECK (length(trim(name)) > 0),
-  -- Eigentumsform ist ab Stufe 1 im Modell, WEG wird ab Stufe 3 befüllt.
+  -- The ownership form is in the model from stage 1; WEG (condominium) is used from stage 3.
   ownership_form text NOT NULL DEFAULT 'rental' CHECK (ownership_form IN ('rental', 'weg')),
   created_at  timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id),
@@ -45,8 +45,8 @@ CREATE TABLE building (
   created_at  timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id),
   UNIQUE (tenant_id, id),
-  -- Zusammengesetzter Fremdschlüssel: ein Gebäude kann nie auf das Objekt
-  -- eines anderen Mandanten zeigen.
+  -- Composite foreign key: a building can never point to the property of
+  -- another tenant.
   FOREIGN KEY (tenant_id, property_id) REFERENCES property (tenant_id, id)
 );
 
@@ -62,23 +62,23 @@ CREATE TABLE unit (
   FOREIGN KEY (tenant_id, building_id) REFERENCES building (tenant_id, id)
 );
 
--- Zeitlich versionierte Fläche: eine Abrechnung für 2025 sieht die Werte von 2025.
--- Fläche als Ganzzahl in Hundertstel-m² (54,37 m² = 5437).
+-- Time-versioned area: a settlement for 2025 sees the values of 2025.
+-- Area as an integer in hundredths of a square metre (54.37 m2 = 5437).
 CREATE TABLE unit_area (
   id          uuid NOT NULL DEFAULT gen_random_uuid(),
   tenant_id   uuid NOT NULL REFERENCES organization (id),
   unit_id     uuid NOT NULL,
   area_centi_sqm integer NOT NULL CHECK (area_centi_sqm > 0),
-  -- Halboffen [gültig ab, gültig bis); obere Grenze offen = gilt weiter.
+  -- Half-open [valid from, valid until); open upper bound = still valid.
   valid       daterange NOT NULL CHECK (NOT isempty(valid) AND lower(valid) IS NOT NULL),
   created_at  timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id),
   FOREIGN KEY (tenant_id, unit_id) REFERENCES unit (tenant_id, id),
-  -- Keine zwei Flächen derselben Einheit dürfen sich zeitlich überschneiden.
+  -- No two areas of the same unit may overlap in time.
   EXCLUDE USING gist (unit_id WITH =, valid WITH &&)
 );
 
--- Row-Level Security. FORCE gilt auch für den Tabelleneigentümer.
+-- Row-level security. FORCE also applies to the table owner.
 ALTER TABLE organization ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON organization

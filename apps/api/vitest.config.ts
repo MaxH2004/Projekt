@@ -1,7 +1,7 @@
 import swc from "unplugin-swc";
 import { defineConfig } from "vitest/config";
 
-// NestJS braucht Decorator-Metadaten; die erzeugt SWC, nicht esbuild.
+// NestJS needs decorator metadata; SWC emits it, esbuild does not.
 export default defineConfig({
   plugins: [
     swc.vite({

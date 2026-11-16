@@ -4,19 +4,19 @@ import { daysInclusive, overlapDays, toDayNumber, type IsoDate, type Period } fr
 export interface Occupancy {
   readonly id: string;
   readonly from: IsoDate;
-  /** `null` = Mietverhältnis läuft weiter. */
+  /** `null` = the tenancy is ongoing. */
   readonly to: IsoDate | null;
 }
 
 export interface OccupancySplit {
   readonly shares: readonly { id: string; days: number; amountCents: bigint }[];
-  /** Leerstand: diesen Anteil trägt der Vermieter. */
+  /** Vacancy: this share is borne by the landlord. */
   readonly vacancy: { days: number; amountCents: bigint };
 }
 
 /**
- * Teilt die Kosten einer Einheit tagesgenau auf die Mietverhältnisse im
- * Abrechnungszeitraum auf. Tage ohne Mietverhältnis sind Leerstand.
+ * Splits the costs of a unit across the tenancies within the settlement
+ * period, exact to the day. Days without a tenancy count as vacancy.
  */
 export function splitByOccupancy(
   totalCents: bigint,
@@ -30,7 +30,7 @@ export function splitByOccupancy(
     const prev = sorted[i - 1]!;
     const cur = sorted[i]!;
     if (prev.to === null || toDayNumber(prev.to) >= toDayNumber(cur.from)) {
-      throw new RangeError(`Mietverhältnisse ${prev.id} und ${cur.id} überschneiden sich`);
+      throw new RangeError(`Tenancies ${prev.id} and ${cur.id} overlap`);
     }
   }
 

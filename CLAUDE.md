@@ -1,27 +1,32 @@
-# Hausverwaltung
+# Property management
 
-Software für Mietverwaltung, zuerst für private Vermieter in Deutschland.
+Software for rental property management, first for private landlords in Germany.
 
-## Verbindlich
+## Binding
 
-- Die Ordnerstruktur und die Modulgrenzen stehen in `docs/STRUKTUR.md`. Keine
-  neuen Ordner auf den dort genannten Ebenen ohne Eintrag in `docs/adr/`.
-- Vor jedem Commit muss `pnpm verify` grün sein.
-- Fachliche Rechenregeln (BetrKV, HeizkostenV, CO2KostAufG) nie aus dem Gedächtnis
-  umsetzen: nur mit Quelle in `docs/fachlogik/` und Testfall in
+- Everything in the repository is in English: code, comments, messages, docs,
+  commit messages.
+- The folder structure and module boundaries are in `docs/STRUCTURE.md`. No new
+  folders on the levels listed there without an entry in `docs/adr/`.
+- `pnpm verify` must be green before every commit.
+- Never implement legal calculation rules (BetrKV, HeizkostenV, CO2KostAufG)
+  from memory: only with a source in `docs/domain-rules/` and a test case in
   `packages/settlement-engine/fixtures/`.
-- Keine echten Mieter- oder Bankdaten und keine Zugangsdaten im Repository.
+- No real renter or bank data and no credentials in the repository.
 
-## Befehle
+## Commands
 
 - `pnpm install`
-- `pnpm verify` – Struktur, Build, Typen, Grenzen, Tests
-- `pnpm db:migrate` – braucht `DATABASE_URL`
-- Tests in `packages/db` brauchen `TEST_DATABASE_URL`; der Datenbankname muss auf
-  `_test` enden, weil die Tests das Schema zurücksetzen. Lokale Datenbank:
+- `pnpm verify` – structure, build, types, boundaries, tests
+- `pnpm db:migrate` – needs `DATABASE_URL`
+- Tests in `packages/db` need `TEST_DATABASE_URL`; the database name must end in
+  `_test` because the tests reset the schema. Local database:
   `docker compose -f infra/compose.yaml up -d`
 
-## Konventionen
+## Conventions
 
-- Bezeichner im Code englisch, Oberfläche, Fehlermeldungen und Kommentare deutsch.
-- Geld als `bigint` in Cent. Verteilungen nur über `allocate` aus der Engine.
+- `tenant` means the software's customer (table `organization`), a `tenancy` is
+  a rental contract, and the people renting are `person` rows linked to it.
+- Money as `bigint` in cents. Splits only through `allocate` from the engine.
+- Ledger postings only through `postJournalEntry` / `reverseJournalEntry` from
+  `@hv/db`.

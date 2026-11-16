@@ -1,4 +1,4 @@
 import { defineConfig } from "vitest/config";
 
-// Die Tests teilen sich eine Datenbank und setzen deren Schema zurück.
+// The test files share one database and reset its schema.
 export default defineConfig({ test: { fileParallelism: false } });

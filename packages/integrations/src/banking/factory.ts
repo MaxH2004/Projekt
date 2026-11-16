@@ -4,7 +4,7 @@ import { Psd2BankDataProvider } from "./psd2-provider.js";
 
 export type BankProviderKind = "none" | "fake" | "psd2";
 
-/** Wählt den Anbieter nach Konfiguration (BANK_PROVIDER). `none` = keine Bankanbindung. */
+/** Picks the provider by configuration (BANK_PROVIDER). `none` = no bank connection. */
 export function createBankDataProvider(kind: string): BankDataProvider | null {
   switch (kind) {
     case "none":
@@ -14,6 +14,6 @@ export function createBankDataProvider(kind: string): BankDataProvider | null {
     case "psd2":
       return new Psd2BankDataProvider();
     default:
-      throw new RangeError(`Unbekannter BANK_PROVIDER: ${kind}`);
+      throw new RangeError(`Unknown BANK_PROVIDER: ${kind}`);
   }
 }

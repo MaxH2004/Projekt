@@ -1,3 +1,3 @@
-// Einstiegspunkt für Hintergrundjobs (Bankabruf, OCR, PDF, Versand).
-// Noch ohne Jobs: Die Job-Queue (pg-boss) kommt mit dem ersten Job dazu.
-console.log("Worker gestartet, noch keine Jobs registriert");
+// Entry point for background jobs (bank sync, OCR, PDF, delivery).
+// No jobs yet: the job queue (pg-boss) is added together with the first job.
+console.log("Worker started, no jobs registered yet");

@@ -17,13 +17,13 @@ beforeAll(async () => {
 afterAll(() => app.close());
 
 describe("API", () => {
-  it("meldet sich unter /health", async () => {
+  it("responds on /health", async () => {
     const res = await fetch(`${base}/health`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: "ok" });
   });
 
-  it("antwortet auf unbekannte Pfade mit 404", async () => {
-    expect((await fetch(`${base}/gibt-es-nicht`)).status).toBe(404);
+  it("answers unknown paths with 404", async () => {
+    expect((await fetch(`${base}/does-not-exist`)).status).toBe(404);
   });
 });

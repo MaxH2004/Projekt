@@ -5,8 +5,8 @@ import type { Client } from "pg";
 const MIGRATIONS_DIR = fileURLToPath(new URL("../migrations/", import.meta.url));
 
 /**
- * Spielt alle noch nicht angewendeten SQL-Dateien in Namensreihenfolge ein,
- * jede in einer eigenen Transaktion. Gibt die neu angewendeten Dateien zurück.
+ * Applies all SQL files that have not been applied yet, in name order, each
+ * in its own transaction. Returns the newly applied files.
  */
 export async function migrate(client: Client): Promise<string[]> {
   await client.query(`
@@ -28,7 +28,7 @@ export async function migrate(client: Client): Promise<string[]> {
       await client.query("COMMIT");
     } catch (err) {
       await client.query("ROLLBACK");
-      throw new Error(`Migration ${file} fehlgeschlagen`, { cause: err });
+      throw new Error(`Migration ${file} failed`, { cause: err });
     }
     applied.push(file);
   }

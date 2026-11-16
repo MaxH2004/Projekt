@@ -1,9 +1,9 @@
 import { BankProviderNotConnectedError, type BankAccountRef, type BankDataProvider, type BankTransaction } from "./port.js";
 
 /**
- * Platzhalter für einen lizenzierten PSD2-Anbieter (z. B. finAPI oder Tink).
- * Die Zulassung liegt beim Anbieter. Solange kein Vertrag und kein Zugang
- * bestehen, lehnt jede Methode ab; es werden keine Daten erfunden.
+ * Placeholder for a licensed PSD2 provider (e.g. finAPI or Tink). The licence
+ * sits with the provider. As long as there is no contract and no access, every
+ * method rejects; no data is made up.
  */
 export class Psd2BankDataProvider implements BankDataProvider {
   readonly kind = "psd2";

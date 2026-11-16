@@ -1,4 +1,4 @@
-# Lokale Entwicklung: nur die Datenbank. Die Apps laufen direkt über pnpm.
+# Local development: database only. The apps run directly via pnpm.
 services:
   postgres:
     image: postgres:16

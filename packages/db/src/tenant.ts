@@ -1,12 +1,12 @@
 import type { Pool, PoolClient } from "pg";
 
 /**
- * Führt `fn` in einer Transaktion aus, die auf einen Mandanten begrenzt ist.
- * Der Mandant gilt nur für diese Transaktion (set_config ... is_local = true),
- * eine Verbindung aus dem Pool kann ihn also nicht in die nächste Anfrage tragen.
+ * Runs `fn` in a transaction that is limited to one tenant. The tenant only
+ * applies to this transaction (set_config ... is_local = true), so a pooled
+ * connection cannot carry it into the next request.
  *
- * `role` setzt die Datenbankrolle für die Transaktion. Im Betrieb meldet sich
- * die Anwendung direkt als Mitglied von hv_app an und lässt den Wert weg.
+ * `role` sets the database role for the transaction. In production the
+ * application logs in directly as a member of hv_app and omits it.
  */
 export async function withTenant<T>(
   pool: Pool,

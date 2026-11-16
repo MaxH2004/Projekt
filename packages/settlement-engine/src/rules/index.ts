@@ -6,12 +6,12 @@ export type { RuleSet } from "./types.js";
 
 const ALL: readonly RuleSet[] = [...DE_RULE_SETS];
 
-/** Liefert den Regelsatz, der am Beginn des Abrechnungszeitraums gilt. */
+/** Returns the rule set in force at the start of the settlement period. */
 export function resolveRuleSet(country: RuleSet["country"], periodStart: IsoDate): RuleSet {
   const day = toDayNumber(periodStart);
   const match = ALL.filter((r) => r.country === country && toDayNumber(r.validFrom) <= day).sort(
     (a, b) => toDayNumber(b.validFrom) - toDayNumber(a.validFrom),
   )[0];
-  if (!match) throw new RangeError(`Kein Regelsatz für ${country} ab ${periodStart}`);
+  if (!match) throw new RangeError(`No rule set for ${country} from ${periodStart}`);
   return match;
 }

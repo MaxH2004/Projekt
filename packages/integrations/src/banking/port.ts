@@ -1,20 +1,20 @@
 /**
- * Schnittstelle für Bankdaten. Die Anwendung kennt nur diesen Vertrag;
- * welcher Anbieter dahinter steht (PSD2-Dienst, Dateiimport), ist austauschbar.
+ * Port for bank data. The application only knows this contract; the provider
+ * behind it (PSD2 service, file import) is interchangeable.
  */
 export interface BankAccountRef {
-  /** Kennung des Kontos beim Anbieter. */
+  /** The provider's id for the account. */
   readonly providerAccountId: string;
   readonly iban: string;
   readonly holderName: string;
 }
 
 export interface BankTransaction {
-  /** Stabile Kennung des Anbieters; dient zum Erkennen bereits importierter Umsätze. */
+  /** Stable provider id; used to detect transactions that were already imported. */
   readonly providerTransactionId: string;
   readonly bookingDate: string;
   readonly valueDate: string | null;
-  /** Positiv = Eingang, negativ = Ausgang. */
+  /** Positive = incoming, negative = outgoing. */
   readonly amountCents: bigint;
   readonly currency: "EUR";
   readonly counterpartyName: string | null;
@@ -25,13 +25,13 @@ export interface BankTransaction {
 export interface BankDataProvider {
   readonly kind: string;
   listAccounts(): Promise<BankAccountRef[]>;
-  /** Umsätze mit Buchungsdatum von `from` bis `to`, beide eingeschlossen. */
+  /** Transactions with a booking date from `from` to `to`, both included. */
   fetchTransactions(providerAccountId: string, from: string, to: string): Promise<BankTransaction[]>;
 }
 
 export class BankProviderNotConnectedError extends Error {
   constructor(kind: string) {
-    super(`Bankanbindung "${kind}" ist vorbereitet, aber nicht angeschlossen`);
+    super(`Bank provider "${kind}" is prepared but not connected`);
     this.name = "BankProviderNotConnectedError";
   }
 }
