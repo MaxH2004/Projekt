@@ -1,0 +1,22 @@
+{
+  "name": "hausverwaltung",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint:structure": "node infra/scripts/check-structure.mjs",
+    "lint:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "db:migrate": "pnpm --filter @hv/db migrate",
+    "verify": "pnpm lint:structure && pnpm build && pnpm typecheck && pnpm lint:boundaries && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "dependency-cruiser": "^18.7.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "vitest": "^5.1.0"
+  }
+}
