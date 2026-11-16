@@ -1,0 +1,45 @@
+{
+  "title": "Leap year, move-in mid-year, a refund, heating taken over per unit, vacant unit counts as one person",
+  "reviewed": false,
+  "reviewNote": "Invented case, calculated by hand by the developer. Not checked by a property manager or lawyer.",
+  "calculation": [
+    "Period 2024 has 366 days. Unit U2 is vacant for 182 days and let to O2 from 1 July (184 days).",
+    "k1 insurance 500.00 by area 60 : 40 -> U1 300.00, U2 200.00. U2 by days: 20000 * 184/366 = 10054.64, * 182/366 = 9945.36. Floors sum to 19999, the cent goes to .64: O2 10055, vacancy 9945.",
+    "k2 heating for U1 from the heating cost statement, 720.00 -> O1 72000.",
+    "k3 heating for U2 from the heating cost statement, 366.00 -> by days: O2 36600 * 184/366 = 18400, vacancy 18200.",
+    "k4 waste 549.00 by persons and days, a vacant unit counts as 1 person: O1 1*366 = 366, O2 2*184 = 368, vacancy U2 1*182 = 182, total 916.",
+    "  54900 * 366/916 = 21936.03, * 368/916 = 22055.90, * 182/916 = 10908.08. Floors sum to 54899, the cent goes to .90: O1 21936, O2 22056, vacancy 10908.",
+    "k5 insurance refund -50.00 by area -> U1 -30.00, U2 -20.00. U2 by days on the absolute value: 2000 * 184/366 = 1005.46, * 182/366 = 994.54. Floors sum to 1999, the cent goes to .54: O2 -1005, vacancy -995.",
+    "Totals: O1 30000 + 72000 + 21936 - 3000 = 120936. O2 10055 + 18400 + 22056 - 1005 = 49506. Landlord 9945 + 18200 + 10908 - 995 = 38058.",
+    "Check: 120936 + 49506 + 38058 = 208500 = 50000 + 72000 + 36600 + 54900 - 5000.",
+    "Suggested monthly advance: O1 120936/12 = 10078. O2 49506 * 366/184/12 = 8206.16 -> 8206."
+  ],
+  "input": {
+    "period": { "from": "2024-01-01", "to": "2024-12-31" },
+    "vacancyPersons": 1,
+    "units": [
+      { "id": "U1", "areaCentiSqm": "6000" },
+      { "id": "U2", "areaCentiSqm": "4000" }
+    ],
+    "occupancies": [
+      { "id": "O1", "unitId": "U1", "from": "2018-03-01", "to": null, "persons": 1, "advancesPaidCents": "60000" },
+      { "id": "O2", "unitId": "U2", "from": "2024-07-01", "to": null, "persons": 2, "advancesPaidCents": "25000" }
+    ],
+    "costs": [
+      { "id": "k1", "category": "insurance", "amountCents": "50000", "key": "area" },
+      { "id": "k2", "category": "heating", "amountCents": "72000", "key": "direct", "directUnitId": "U1" },
+      { "id": "k3", "category": "heating", "amountCents": "36600", "key": "direct", "directUnitId": "U2" },
+      { "id": "k4", "category": "street_cleaning_waste", "amountCents": "54900", "key": "persons" },
+      { "id": "k5", "category": "insurance", "amountCents": "-5000", "key": "area" }
+    ]
+  },
+  "expected": {
+    "periodDays": 366,
+    "deadline": "2025-12-31",
+    "statements": [
+      { "occupancyId": "O1", "days": 366, "shares": { "k1": "30000", "k2": "72000", "k3": "0", "k4": "21936", "k5": "-3000" }, "totalCents": "120936", "balanceCents": "60936", "suggestedMonthlyAdvanceCents": "10078" },
+      { "occupancyId": "O2", "days": 184, "shares": { "k1": "10055", "k2": "0", "k3": "18400", "k4": "22056", "k5": "-1005" }, "totalCents": "49506", "balanceCents": "24506", "suggestedMonthlyAdvanceCents": "8206" }
+    ],
+    "landlord": { "shares": { "k1": "9945", "k2": "0", "k3": "18200", "k4": "10908", "k5": "-995" }, "totalCents": "38058" }
+  }
+}

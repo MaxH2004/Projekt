@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import type { ErrorCode, LoginRequest, MeResponse, RegisterRequest, TotpSetupResponse } from "@hv/contracts";
-import { enterTenant, seedChartOfAccounts, SKR04_RENTAL_SUBSET, withIdentity } from "@hv/db";
+import { enterTenant, seedChartOfAccounts, SKR04_RENTAL_2026, withIdentity } from "@hv/db";
 import type pg from "pg";
 import { ApiError } from "../../common/api-error.js";
 import { APP_CONFIG, type AppConfig } from "../../common/config.js";
@@ -58,7 +58,7 @@ export class IdentityService {
         const session = await this.createSession(c, userId, tenantId);
         // From here on the transaction acts inside the new tenant.
         await enterTenant(c, tenantId);
-        await seedChartOfAccounts(c, tenantId, SKR04_RENTAL_SUBSET);
+        await seedChartOfAccounts(c, tenantId, SKR04_RENTAL_2026);
         return session;
       });
     } catch (err) {

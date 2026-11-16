@@ -11,7 +11,9 @@ Software for rental property management, first for private landlords in Germany.
 - `pnpm verify` must be green before every commit.
 - Never implement legal calculation rules (BetrKV, HeizkostenV, CO2KostAufG)
   from memory: only with a source in `docs/domain-rules/` and a test case in
-  `packages/settlement-engine/fixtures/`.
+  `packages/settlement-engine/fixtures/`. Invented cases are allowed (owner's
+  decision of 2026-11-16) but must be calculated by hand independently of the
+  code and carry `"reviewed": false` until an expert has checked them.
 - No real renter or bank data and no credentials in the repository.
 
 ## Commands

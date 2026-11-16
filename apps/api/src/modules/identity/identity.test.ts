@@ -33,7 +33,7 @@ describe("registration", () => {
     const me = await (await api.request("GET", "/auth/me", { cookie })).json();
     expect(me).toMatchObject({ email: "anna@example.com", locale: "fr", organizationName: "Anna Rentals", totpEnabled: false });
     const accounts = await api.sql("SELECT 1 FROM account WHERE tenant_id = $1", [me.organizationId]);
-    expect(accounts).toHaveLength(11);
+    expect(accounts).toHaveLength(38);
   });
 
   it("stores neither the password nor the session token in clear", async () => {

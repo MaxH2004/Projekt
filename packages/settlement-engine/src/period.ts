@@ -9,17 +9,25 @@ export interface Period {
 
 const MS_PER_DAY = 86_400_000;
 
-/** Day number since 1970-01-01 (UTC). Throws on an invalid date. */
-export function toDayNumber(date: IsoDate): number {
+function parts(date: IsoDate): [number, number, number] {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) throw new RangeError(`Invalid date: ${date}`);
-  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+/** Day number since 1970-01-01 (UTC). Throws on an invalid date. */
+export function toDayNumber(date: IsoDate): number {
+  const [y, mo, d] = parts(date);
   const ms = Date.UTC(y, mo - 1, d);
   const check = new Date(ms);
   if (check.getUTCFullYear() !== y || check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== d) {
     throw new RangeError(`Invalid date: ${date}`);
   }
   return ms / MS_PER_DAY;
+}
+
+export function fromDayNumber(day: number): IsoDate {
+  return new Date(day * MS_PER_DAY).toISOString().slice(0, 10);
 }
 
 export function daysInclusive(period: Period): number {
@@ -33,4 +41,18 @@ export function overlapDays(a: Period, b: { from: IsoDate; to: IsoDate | null })
   const start = Math.max(toDayNumber(a.from), toDayNumber(b.from));
   const end = Math.min(toDayNumber(a.to), b.to === null ? Infinity : toDayNumber(b.to));
   return Math.max(0, end - start + 1);
+}
+
+/**
+ * The same day of the month `months` later. If that month is shorter, the
+ * last day of the month (31 January plus one month is 28 or 29 February).
+ */
+export function addMonths(date: IsoDate, months: number): IsoDate {
+  toDayNumber(date);
+  const [y, mo, d] = parts(date);
+  const target = y * 12 + (mo - 1) + months;
+  const year = Math.floor(target / 12);
+  const month = target - year * 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(year, month, Math.min(d, lastDay))).toISOString().slice(0, 10);
 }

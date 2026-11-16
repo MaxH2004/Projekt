@@ -1,0 +1,49 @@
+{
+  "title": "Three units, tenant change with one vacant month, one unit vacant all year",
+  "reviewed": false,
+  "reviewNote": "Invented case, calculated by hand by the developer. Not checked by a property manager or lawyer.",
+  "calculation": [
+    "Period 2025 has 365 days. Unit B: tenancy T2 until 31 March (90 days), vacant in April (30 days), tenancy T3 from 1 May (245 days).",
+    "c1 property tax 1,000.00 by area 50 : 75 : 125 of 250 m2 -> A 200.00, B 300.00, C 500.00.",
+    "  B by days: 30000 * 90/365 = 7397.26, * 30/365 = 2465.75, * 245/365 = 20136.99. Floors 7397 + 2465 + 20136 = 29998, two cents left go to the largest remainders (.99 and .75): T2 7397, vacancy 2466, T3 20137.",
+    "c2 waste 730.00 by persons and days, vacant units count 0 persons: T1 2*365 = 730, T2 1*90 = 90, T3 3*245 = 735, total 1555.",
+    "  73000 * 730/1555 = 34270.10, * 90/1555 = 4225.08, * 735/1555 = 34504.82. Floors sum to 72999, one cent left goes to T3: 34270, 4225, 34505.",
+    "c3 water 600.00 by consumption 40 : 60 : 0 m3 -> A 240.00, B 360.00, C 0.00.",
+    "  B by days: 36000 * 90/365 = 8876.71, * 30/365 = 2958.90, * 245/365 = 24164.38. Floors sum to 35998, two cents go to .90 and .71: T2 8877, vacancy 2959, T3 24164.",
+    "c4 caretaker 300.00 per unit -> 100.00 each.",
+    "  B by days: 10000 * 90/365 = 2465.75, * 30/365 = 821.92, * 245/365 = 6712.33. Floors sum to 9998, two cents go to .92 and .75: T2 2466, vacancy 822, T3 6712.",
+    "Totals: T1 20000 + 34270 + 24000 + 10000 = 88270. T2 7397 + 4225 + 8877 + 2466 = 22965. T3 20137 + 34505 + 24164 + 6712 = 85518.",
+    "Landlord: 2466 + 50000 (c1), 0 (c2), 2959 (c3), 822 + 10000 (c4) = 66247. Check: 88270 + 22965 + 85518 + 66247 = 263000 = sum of all costs.",
+    "Suggested monthly advance: T1 88270/12 = 7355.83 -> 7356. T2 22965 * 365/90/12 = 7761.32 -> 7761. T3 85518 * 365/245/12 = 10617.03 -> 10617."
+  ],
+  "input": {
+    "period": { "from": "2025-01-01", "to": "2025-12-31" },
+    "vacancyPersons": 0,
+    "units": [
+      { "id": "A", "areaCentiSqm": "5000" },
+      { "id": "B", "areaCentiSqm": "7500" },
+      { "id": "C", "areaCentiSqm": "12500" }
+    ],
+    "occupancies": [
+      { "id": "T1", "unitId": "A", "from": "2020-01-01", "to": null, "persons": 2, "advancesPaidCents": "90000" },
+      { "id": "T2", "unitId": "B", "from": "2019-06-01", "to": "2025-03-31", "persons": 1, "advancesPaidCents": "15000" },
+      { "id": "T3", "unitId": "B", "from": "2025-05-01", "to": null, "persons": 3, "advancesPaidCents": "80000" }
+    ],
+    "costs": [
+      { "id": "c1", "category": "public_charges", "amountCents": "100000", "key": "area" },
+      { "id": "c2", "category": "street_cleaning_waste", "amountCents": "73000", "key": "persons" },
+      { "id": "c3", "category": "water_supply", "amountCents": "60000", "key": "consumption", "consumptionByUnit": { "A": "40", "B": "60", "C": "0" } },
+      { "id": "c4", "category": "caretaker", "amountCents": "30000", "key": "units" }
+    ]
+  },
+  "expected": {
+    "periodDays": 365,
+    "deadline": "2026-12-31",
+    "statements": [
+      { "occupancyId": "T1", "days": 365, "shares": { "c1": "20000", "c2": "34270", "c3": "24000", "c4": "10000" }, "totalCents": "88270", "balanceCents": "-1730", "suggestedMonthlyAdvanceCents": "7356" },
+      { "occupancyId": "T2", "days": 90, "shares": { "c1": "7397", "c2": "4225", "c3": "8877", "c4": "2466" }, "totalCents": "22965", "balanceCents": "7965", "suggestedMonthlyAdvanceCents": "7761" },
+      { "occupancyId": "T3", "days": 245, "shares": { "c1": "20137", "c2": "34505", "c3": "24164", "c4": "6712" }, "totalCents": "85518", "balanceCents": "5518", "suggestedMonthlyAdvanceCents": "10617" }
+    ],
+    "landlord": { "shares": { "c1": "52466", "c2": "0", "c3": "2959", "c4": "10822" }, "totalCents": "66247" }
+  }
+}
