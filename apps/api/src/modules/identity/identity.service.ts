@@ -5,7 +5,7 @@ import { enterTenant, seedChartOfAccounts, SKR04_RENTAL_SUBSET, withIdentity } f
 import type pg from "pg";
 import { ApiError } from "../../common/api-error.js";
 import { APP_CONFIG, type AppConfig } from "../../common/config.js";
-import { PG_POOL } from "../../common/database.module.js";
+import { PG_POOL } from "../../common/tokens.js";
 import { DUMMY_HASH, hashPassword, verifyPassword } from "./password.js";
 import { SecretBox } from "./secret-box.js";
 import { generateTotpSecret, otpauthUri, verifyTotp } from "./totp.js";

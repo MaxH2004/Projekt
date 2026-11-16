@@ -1,8 +1,9 @@
 import { Global, Inject, Module, type OnApplicationShutdown } from "@nestjs/common";
 import pg from "pg";
 import { APP_CONFIG, type AppConfig } from "./config.js";
+import { TenantDb } from "./tenant-db.js";
 
-export const PG_POOL = Symbol("PG_POOL");
+import { PG_POOL } from "./tokens.js";
 
 @Global()
 @Module({
@@ -12,8 +13,9 @@ export const PG_POOL = Symbol("PG_POOL");
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) => new pg.Pool({ connectionString: config.databaseUrl }),
     },
+    TenantDb,
   ],
-  exports: [PG_POOL],
+  exports: [PG_POOL, TenantDb],
 })
 export class DatabaseModule implements OnApplicationShutdown {
   constructor(@Inject(PG_POOL) private readonly pool: pg.Pool) {}
