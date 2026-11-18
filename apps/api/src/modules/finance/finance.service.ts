@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { RENT_COMPONENT_KINDS, type Payment, type RentCharge, type RentComponentKind, type TenancyBalance } from "@hv/contracts";
+import { CHARGE_KINDS, type ChargeKind, type Payment, type RentCharge, type RentComponentKind, type TenancyBalance } from "@hv/contracts";
 import { postJournalEntry, reverseJournalEntry, type JournalLineInput } from "@hv/db";
 import type pg from "pg";
 import { ApiError } from "../../common/api-error.js";
@@ -32,7 +32,7 @@ const CHARGE = `c.id, c.tenancy_id AS "tenancyId", to_char(c.period_month, 'YYYY
   c.amount_cents::text AS "amountCents", c.due_date::text AS "dueDate", c.cancelled_at IS NOT NULL AS cancelled,
   (${OPEN})::text AS "openCents"`;
 
-/** Oldest due first; within a day in the order of RENT_COMPONENT_KINDS. */
+/** Oldest due first; within a day in the order of CHARGE_KINDS. */
 const CHARGE_ORDER = `c.due_date, c.period_month, array_position($KINDS::text[], c.kind), c.id`;
 
 type Row<T> = { [K in keyof T]: T[K] extends number ? string : T[K] };
@@ -125,10 +125,10 @@ export class FinanceService {
         ).rows[0],
       );
       const open = (
-        await c.query<{ id: string; kind: RentComponentKind; cancelled: boolean; openCents: string }>(
+        await c.query<{ id: string; kind: ChargeKind; cancelled: boolean; openCents: string }>(
           `SELECT c.id, c.kind, c.cancelled_at IS NOT NULL AS cancelled, (${OPEN})::text AS "openCents"
            FROM rent_charge c WHERE c.tenancy_id = $1 ORDER BY ${CHARGE_ORDER.replace("$KINDS", "$2")} FOR UPDATE OF c`,
-          [input.tenancyId, RENT_COMPONENT_KINDS],
+          [input.tenancyId, CHARGE_KINDS],
         )
       ).rows;
       const allocations = input.allocations ? checkAllocations(input.allocations, open) : oldestFirst(input.amountCents, open);
@@ -228,7 +228,7 @@ export class FinanceService {
     const rows = (
       await c.query<Row<RentCharge>>(
         `SELECT ${CHARGE} FROM rent_charge c WHERE ${where} ORDER BY c.tenancy_id, ${CHARGE_ORDER.replace("$KINDS", kindsParam)}`,
-        [...params, RENT_COMPONENT_KINDS],
+        [...params, CHARGE_KINDS],
       )
     ).rows;
     return rows.map(toCharge);

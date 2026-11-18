@@ -1,4 +1,4 @@
-import type { RentComponentKind } from "@hv/contracts";
+import type { ChargeKind } from "@hv/contracts";
 
 /**
  * Which account a business event books to, as codes of the SKR 04 rental
@@ -16,7 +16,8 @@ export const POSTING_ACCOUNTS = {
     base_rent: "410500",
     operating_cost_advance: "410800",
     heating_cost_advance: "410800",
-  } satisfies Record<RentComponentKind, string>,
+    settlement_balance: "410850",
+  } satisfies Record<ChargeKind, string>,
 } as const;
 
 /** Expense accounts that are not paid in cash and therefore cannot be used for an expense. */

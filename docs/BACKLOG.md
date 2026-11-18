@@ -16,7 +16,7 @@ Last full review: 2026-11-18.
 | Master data | API and interface for properties, buildings, units, persons and tenancies with rent changes and end; API for area history, meters and readings | Interface for area history, meters and readings, editing persons and buildings · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
 | Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · interface for all of it | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · generating charges automatically each month (worker job) · interface: allocating a payment to chosen charges, splitting an expense over several lines or properties, confirmation before cancelling |
 | Receipts | Port for document extraction | Upload (web, app, e-mail forwarding) · file storage · extraction with user confirmation · assignment to property, cost type and allocability · invoice tables |
-| Settlements | Engine core for operating costs with two hand-calculated cases | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · cost types with BetrKV category per invoice · settlement run stored and frozen with rule set version · API and interface · statement as PDF · sending · the simplifications in section 3 |
+| Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · correcting a final settlement · paying out refunds · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
 | Documents and deadlines | Template system with payment reminder in three languages | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
 | Tax | Chart of accounts maps to the lines of the § 21 EStG statement | Anlage V export · separate reporting under § 35a EStG |
 | Account and subscription | Registration, login, sessions, two-factor authentication, login lock, with interface · port for subscription billing | QR code for setting up two-factor authentication · See section 2 · plans and prices · data export · deleting an account and its data |
@@ -48,6 +48,19 @@ Settlement engine, details in `docs/domain-rules/operating-costs.md`:
 - Cable fees after 2024-06-30 are not blocked by the engine.
 - Raising advance payments (§ 560 BGB) is only a suggestion value.
 - Heating and hot water are only accepted as finished amounts per unit.
+
+Settlement in the application, details in `docs/domain-rules/operating-costs.md`:
+
+- Costs count by payment date; expenses have no service period.
+- Heating and hot water costs and advances are left out of the settlement.
+- A property is one settlement unit; costs cannot be split between buildings.
+- Persons per tenancy are entered for each settlement, not stored over time.
+- An area that changes within the period blocks the area key.
+- Refunds are shown on the statement but not booked or paid out.
+- A final settlement cannot be corrected or replaced.
+- The statement has no IBAN of the landlord; organizations have no bank
+  details yet.
+- The statement letter has not been checked by a lawyer.
 
 Rent charges and payments, details in `docs/domain-rules/rent-and-payments.md`:
 

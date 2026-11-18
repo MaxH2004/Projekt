@@ -72,6 +72,9 @@ export interface Person {
 
 export const RENT_COMPONENT_KINDS = ["base_rent", "operating_cost_advance", "heating_cost_advance"] as const;
 export type RentComponentKind = (typeof RENT_COMPONENT_KINDS)[number];
+/** What a charge can be for: a rent component, or the balance of an operating cost settlement. */
+export const CHARGE_KINDS = [...RENT_COMPONENT_KINDS, "settlement_balance"] as const;
+export type ChargeKind = (typeof CHARGE_KINDS)[number];
 export const RENT_TYPES = ["fixed", "graduated", "indexed"] as const;
 
 export const tenancyInputSchema = z

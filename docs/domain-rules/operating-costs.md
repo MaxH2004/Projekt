@@ -46,6 +46,30 @@ the shares of a cost always add up to exactly its total.
    twelve is a convenience. Raising advances has its own rules (§ 560 BGB),
    which are not implemented.
 
+## How the application feeds the engine
+
+Added 2026-11-18. These are choices of the application, not statutory rules,
+and are **not reviewed** either. Code: `apps/api/src/modules/settlement/`.
+
+| Input | Taken from | Choice made |
+| --- | --- | --- |
+| Settlement unit | One property with all units of all its buildings | A property is treated as one economic unit; costs cannot be split between buildings. |
+| Period | Whole calendar months, at most twelve | No periods starting mid-month. |
+| Costs | Expense lines of the property with an operating cost category, paid within the period, not reversed | Costs count by **payment date**. Whether a statement may follow payment date or must follow the period the service covers is a legal question; expenses have no service period yet. |
+| Heating and hot water | Left out entirely, with a note in the statement | The engine accepts them only per unit from a heating cost statement; collecting that per unit is not built. |
+| Area | The recorded area if exactly one value covers the whole period | Otherwise the area key is refused; no averaging. |
+| Persons | Entered per tenancy for each settlement, prefilled with the number of named tenants | The number of persons is not stored over time. Persons for vacant units must be entered; there is no default. |
+| Advances | Payments in force covering operating cost advance charges of months in the period | Paid, not charged amounts. Heating cost advances are not counted, matching the left-out heating costs. |
+| Key | Chosen per category by the user, preselected "area" | Area, units, persons, direct to one unit. Consumption is not offered. |
+| Balance | Positive balances become a charge of kind `settlement_balance`, due on a date the user chooses; paid balances book to 410850 | Refunds are not booked or paid out by the software. |
+| Final | Stored with input, result and rule set; never changed | One settlement per property and day; no correction or second statement yet. |
+
+The statement (`packages/pdf-templates/src/templates/operating-cost-statement.ts`)
+shows per cost type the total cost, the key with the tenant's and the total
+weight, and the tenant's share, then the sum, the advances and the balance.
+That these items must appear follows point 5 above; the wording of the letter
+has not been checked by a lawyer.
+
 ## Sources (retrieved 2026-11-16)
 
 - BetrKV § 2, official text: https://www.gesetze-im-internet.de/betrkv/__2.html

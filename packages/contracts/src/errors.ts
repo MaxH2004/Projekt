@@ -17,6 +17,10 @@ export const ERROR_CODES = [
   "allocation_exceeds_open_amount",
   "bank_statement_unreadable",
   "bank_transaction_not_bookable",
+  "settlement_unit_area",
+  "settlement_key_missing",
+  "settlement_persons_missing",
+  "settlement_nothing_to_settle",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

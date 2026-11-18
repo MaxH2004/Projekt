@@ -39,6 +39,7 @@ export async function createUnit(propertyId: string, buildingId: string, previou
     if (area) {
       // Two decimals, read like an amount: "54,37" → 5437.
       const centiSqm = f.money("area");
+      // Required with an area: a default of today would leave earlier settlement periods without one.
       body = { label, area: { areaCentiSqm: centiSqm, validFrom: f.text("areaValidFrom") } };
     }
     await api<Unit>("POST", `/buildings/${buildingId}/units`, body);

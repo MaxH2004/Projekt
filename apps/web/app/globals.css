@@ -524,3 +524,7 @@ button.link-button {
     overflow-x: auto;
   }
 }
+
+.narrow-input {
+  width: 5rem;
+}

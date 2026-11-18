@@ -5,7 +5,7 @@ import { Field } from "../../../../components/field";
 import { Form } from "../../../../components/form";
 import { ApiFailure, apiGet } from "../../../../lib/api";
 import { getTranslate } from "../../../../lib/locale";
-import { formatArea, today } from "../../../../lib/money";
+import { formatArea } from "../../../../lib/money";
 import { createBuilding, createUnit, renameProperty } from "../../../actions/master-data";
 
 export default async function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -61,8 +61,8 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               <Field label={t("field.areaSqm")}>
                 <input name="area" inputMode="decimal" data-field="area.areaCentiSqm" />
               </Field>
-              <Field label={t("field.validFrom")}>
-                <input name="areaValidFrom" type="date" defaultValue={today()} data-field="area.validFrom" />
+              <Field label={t("field.areaValidFrom")} hint={t("units.areaValidFromHint")}>
+                <input name="areaValidFrom" type="date" data-field="area.validFrom" />
               </Field>
             </Form>
           </details>

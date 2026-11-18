@@ -15,6 +15,7 @@ const NAV: [string, MessageKey][] = [
   ["/rent", "nav.rent"],
   ["/bank", "nav.bank"],
   ["/expenses", "nav.expenses"],
+  ["/settlements", "nav.settlements"],
   ["/reports", "nav.reports"],
 ];
 

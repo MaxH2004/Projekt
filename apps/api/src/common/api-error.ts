@@ -17,6 +17,10 @@ const STATUS: Record<ErrorCode, number> = {
   allocation_exceeds_open_amount: 409,
   bank_statement_unreadable: 400,
   bank_transaction_not_bookable: 409,
+  settlement_unit_area: 422,
+  settlement_key_missing: 422,
+  settlement_persons_missing: 422,
+  settlement_nothing_to_settle: 422,
 };
 
 /** An error the client can act on. The body is `{ code, fields? }`, never a sentence. */

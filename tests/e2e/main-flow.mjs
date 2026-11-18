@@ -70,6 +70,7 @@ try {
     const form = page.locator("details[open] form");
     await form.getByLabel("Bezeichnung").fill(label);
     await form.getByLabel("Wohnfläche in m²").fill(area);
+    await form.getByLabel("Fläche gilt seit").fill("2000-01-01");
     await submit(form, "Anlegen");
     await page.getByRole("cell", { name: label }).waitFor();
   }
@@ -147,6 +148,40 @@ try {
   const balance = (await page.locator(".stats").innerText()).replace(/\s+/g, " ");
   assert.match(balance, /850,00 € Gefordert 850,00 € Bezahlt 0,00 € Offen/);
 
+  // Operating cost settlement for the current month, by area. EG 54.37 m² (let all month),
+  // OG 61.20 m² (vacant); total 115.57 m².
+  //   Insurance 312.50 × 5437/11557 = 147.019… → 147.02 (remainder 6793 beats 4764 of OG)
+  //   Waste 119.00 × 5437/11557 = 55.983… → 55.98 (the cent goes to OG, remainder 7343 beats 4214)
+  //   Share 203.00, advance paid 150.00 → 53.00 to pay.
+  await page.goto(`${base}/settlements`);
+  await page.getByLabel("Von (Monat)").fill(month);
+  await page.getByLabel("Bis (Monat)").fill(month);
+  await page.getByRole("button", { name: "Vorbereiten" }).click();
+  await page.waitForURL(/\/settlements\/new/);
+  await page.getByText("Heiz- und Warmwasserkosten").waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "Berechnen" }).click();
+  await page.waitForURL(/preview=1/);
+  await page.getByRole("cell", { name: "53,00 € Nachzahlung" }).waitFor();
+  await page.getByLabel("Nachzahlungen fällig am").fill(`${year + 1}-01-31`);
+  await submit(page, "Abrechnung festschreiben");
+  await page.waitForURL(/\/settlements\/[0-9a-f-]{36}$/);
+  const statementHref = await page.getByRole("link", { name: "Abrechnung öffnen" }).getAttribute("href");
+  const doc = await browser.newPage();
+  await doc.context().addCookies(await page.context().cookies());
+  await doc.goto(`${base}${statementHref}`);
+  const letter = (await doc.locator("body").innerText()).replace(/[\u00a0\u202f]/g, " ");
+  assert.match(letter, /Betriebskostenabrechnung/);
+  assert.match(letter, /Wohnfläche: 54,37 m² von 115,57 m²/);
+  assert.match(letter, /147,02 €/);
+  assert.match(letter, /55,98 €/);
+  assert.match(letter, /Bitte überweisen Sie die Nachzahlung von 53,00 €/);
+  await doc.close();
+  await page.goto(`${base}/rent`);
+  await page.getByRole("cell", { name: "Nachzahlung Betriebskosten" }).waitFor();
+
+  await page.goto(`${base}/tenancies`);
+  await page.getByRole("link", { name: /EG links · Erika Müller/ }).click();
+  await page.waitForURL(/\/tenancies\/.+/);
   await page.getByRole("combobox", { name: "Sprache" }).selectOption("fr");
   await submit(page, "Übernehmen");
   await page.getByRole("link", { name: "Aperçu" }).waitFor();

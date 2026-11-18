@@ -1,0 +1,42 @@
+{
+  "title": "Area, units and persons keys in one period, move-in mid-year, vacant unit counts as one person",
+  "reviewed": false,
+  "reviewNote": "Invented case, calculated by hand by the developer. Not checked by a property manager or lawyer. Same case as apps/api/src/modules/settlement/assemble.test.ts.",
+  "calculation": [
+    "Period 2026 has 365 days. Unit U2 is vacant for 181 days and let to O2 from 1 July (184 days).",
+    "k1 insurance 1000.00 by area 60 : 40 -> U1 600.00, U2 400.00. U2 by days: 40000 * 184/365 = 20164.38 (remainder 140), * 181/365 = 19835.62 (remainder 225). Floors sum to 39999, the cent goes to the larger remainder: O2 20164, vacancy 19836.",
+    "k2 waste 365.00 by units -> 182.50 each. U2 by days: 18250 * 184/365 = 9200 exactly, vacancy 9050.",
+    "k3 water 730.00 by persons and days, a vacant unit counts as 1 person: O1 2*365 = 730, O2 1*184 = 184, vacancy U1 0, vacancy U2 1*181 = 181, total 1095.",
+    "  73000 * 730/1095 = 48666.67, * 184/1095 = 12266.67, * 181/1095 = 12066.67, all with remainder 730. Floors sum to 72998; the two cents go to the earliest entries O1 and O2: O1 48667, O2 12267, vacancy 12066.",
+    "Totals: O1 60000 + 18250 + 48667 = 126917. O2 20164 + 9200 + 12267 = 41631. Landlord 19836 + 9050 + 12066 = 40952.",
+    "Check: 126917 + 41631 + 40952 = 209500 = 100000 + 36500 + 73000.",
+    "Balances: O1 126917 - 60000 = 66917. O2 41631 - 30000 = 11631.",
+    "Suggested monthly advance: O1 126917/12 = 10576.42 -> 10576. O2 41631 * 365/184/12 = 6881.94 -> 6882."
+  ],
+  "input": {
+    "period": { "from": "2026-01-01", "to": "2026-12-31" },
+    "vacancyPersons": 1,
+    "units": [
+      { "id": "U1", "areaCentiSqm": "6000" },
+      { "id": "U2", "areaCentiSqm": "4000" }
+    ],
+    "occupancies": [
+      { "id": "O1", "unitId": "U1", "from": "2020-01-01", "to": null, "persons": 2, "advancesPaidCents": "60000" },
+      { "id": "O2", "unitId": "U2", "from": "2026-07-01", "to": null, "persons": 1, "advancesPaidCents": "30000" }
+    ],
+    "costs": [
+      { "id": "k1", "category": "insurance", "amountCents": "100000", "key": "area" },
+      { "id": "k2", "category": "street_cleaning_waste", "amountCents": "36500", "key": "units" },
+      { "id": "k3", "category": "water_supply", "amountCents": "73000", "key": "persons" }
+    ]
+  },
+  "expected": {
+    "periodDays": 365,
+    "deadline": "2027-12-31",
+    "statements": [
+      { "occupancyId": "O1", "days": 365, "shares": { "k1": "60000", "k2": "18250", "k3": "48667" }, "totalCents": "126917", "balanceCents": "66917", "suggestedMonthlyAdvanceCents": "10576" },
+      { "occupancyId": "O2", "days": 184, "shares": { "k1": "20164", "k2": "9200", "k3": "12267" }, "totalCents": "41631", "balanceCents": "11631", "suggestedMonthlyAdvanceCents": "6882" }
+    ],
+    "landlord": { "shares": { "k1": "19836", "k2": "9050", "k3": "12066" }, "totalCents": "40952" }
+  }
+}

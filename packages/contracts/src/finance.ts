@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { centsSchema, idSchema, isoDateSchema, type RentComponentKind } from "./master-data.js";
+import { centsSchema, idSchema, isoDateSchema, type ChargeKind } from "./master-data.js";
 
 /** Calendar month YYYY-MM. */
 export const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -13,7 +13,7 @@ export interface RentCharge {
   readonly tenancyId: string;
   /** Month the charge is for, YYYY-MM. */
   readonly month: string;
-  readonly kind: RentComponentKind;
+  readonly kind: ChargeKind;
   readonly amountCents: number;
   readonly dueDate: string;
   readonly cancelled: boolean;
