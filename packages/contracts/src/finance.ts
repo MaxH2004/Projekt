@@ -53,6 +53,8 @@ export interface Payment {
   /** Part of the payment not allocated to a charge: credit of the tenancy. */
   readonly unallocatedCents: number;
   readonly reversed: boolean;
+  /** Bank transaction the payment was booked from, if any. */
+  readonly bankTransactionId: string | null;
 }
 
 export interface TenancyBalance {
@@ -66,3 +68,56 @@ export interface TenancyBalance {
   /** Payments not yet allocated. */
   readonly creditCents: number;
 }
+
+// --- Bank import ---
+
+/** Size limit of an uploaded statement in characters. */
+export const BANK_STATEMENT_MAX_LENGTH = 1_500_000;
+
+export const bankImportSchema = z.object({
+  format: z.literal("camt053"),
+  content: z.string().min(1).max(BANK_STATEMENT_MAX_LENGTH),
+});
+
+export interface BankImportResult {
+  readonly accounts: readonly {
+    readonly iban: string;
+    readonly imported: number;
+    /** Transactions that were imported before and were left as they are. */
+    readonly duplicates: number;
+    /** Entries that are not booked or not in euro. */
+    readonly skipped: number;
+  }[];
+}
+
+export const MATCH_REASONS = ["known_iban", "amount_matches", "name_matches"] as const;
+export type MatchReason = (typeof MATCH_REASONS)[number];
+
+export interface MatchSuggestion {
+  readonly tenancyId: string;
+  readonly score: number;
+  readonly reasons: readonly MatchReason[];
+}
+
+export interface BankTransactionView {
+  readonly id: string;
+  readonly iban: string;
+  readonly bookingDate: string;
+  readonly valueDate: string | null;
+  /** Positive = incoming, negative = outgoing. */
+  readonly amountCents: number;
+  readonly counterpartyName: string | null;
+  readonly counterpartyIban: string | null;
+  readonly remittanceInfo: string;
+  readonly status: "open" | "booked" | "ignored";
+  readonly paymentId: string | null;
+  /** Tenancies the transaction probably belongs to, best first. Only for open incoming transactions. */
+  readonly suggestions: readonly MatchSuggestion[];
+}
+
+export const bankTransactionBookSchema = z.object({
+  tenancyId: idSchema,
+  allocations: z.array(z.object({ chargeId: idSchema, amountCents: positiveCents })).max(500).optional(),
+});
+
+export const bankTransactionIgnoreSchema = z.object({ ignored: z.boolean() });

@@ -14,7 +14,7 @@ Last full review: 2026-11-18.
 | Area | Done | Open |
 | --- | --- | --- |
 | Master data | API for properties, buildings, units with area history, persons, tenancies with rent history, meters and readings | Interface · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
-| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments | Bank statement import (CAMT/CSV) · suggesting matches for imported payments · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · expenses and their posting rules · income and expenses per property · generating charges automatically each month (worker job) · interface for all of it |
+| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment | Bank statement import from CSV · booking outgoing transactions as expenses · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · expenses and their posting rules · income and expenses per property · generating charges automatically each month (worker job) · interface for all of it |
 | Receipts | Port for document extraction | Upload (web, app, e-mail forwarding) · file storage · extraction with user confirmation · assignment to property, cost type and allocability · invoice tables |
 | Settlements | Engine core for operating costs with two hand-calculated cases | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · cost types with BetrKV category per invoice · settlement run stored and frozen with rule set version · API and interface · statement as PDF · sending · the simplifications in section 3 |
 | Documents and deadlines | Template system with payment reminder in three languages | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
@@ -65,7 +65,23 @@ Rent charges and payments, details in `docs/domain-rules/rent-and-payments.md`:
   has to be reversed and recorded again.
 - Allocations of a payment are fixed when it is recorded; reallocating means
   reversing it.
-- Only one bank account (180000).
+- Only one bank account (180000) in the ledger, although several bank
+  accounts can be imported.
+
+Bank import:
+
+- The camt.053 reader was written against the published structure and
+  invented files, not against statements of real banks. Needs anonymised
+  sample files from several banks (Sparkasse, Volksbank, a direct bank).
+- Batch bookings (several transaction details in one entry) are not split;
+  the first detail names the counterparty.
+- No CSV import; banks' CSV layouts differ and need a column mapping.
+- Outgoing transactions can only be ignored, not booked; the ledger's bank
+  balance therefore differs from the real one.
+- Suggestion weights are a first guess and not measured on real data.
+- The JSON body limit of the API is raised to 3 MB for all routes because the
+  statement travels as a JSON string; a separate upload route would allow a
+  smaller limit elsewhere.
 
 Master data:
 
@@ -100,7 +116,7 @@ tests. Nothing is connected.
 
 | Integration | Suggested provider | Waiting for |
 | --- | --- | --- |
-| Bank data (PSD2) | finAPI or Tink | Decision and contract. File import comes first. |
+| Bank data (PSD2) | finAPI or Tink | Decision and contract. File import (camt.053) exists. |
 | E-mail, outgoing and incoming | Brevo; alternatives Mailjet, Postmark | Decision, sender domain with SPF/DKIM |
 | Document extraction | Mistral; alternatives Azure Document Intelligence, Mindee | Decision, data processing agreement |
 | Subscription billing | Stripe; alternatives Mollie, Paddle | Decision, plans and prices |

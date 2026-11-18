@@ -15,6 +15,8 @@ const STATUS: Record<ErrorCode, number> = {
   not_found: 404,
   conflict: 409,
   allocation_exceeds_open_amount: 409,
+  bank_statement_unreadable: 400,
+  bank_transaction_not_bookable: 409,
 };
 
 /** An error the client can act on. The body is `{ code, fields? }`, never a sentence. */

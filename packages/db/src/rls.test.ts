@@ -11,7 +11,7 @@ let unitA: string;
 
 beforeAll(async () => {
   const seed = await resetDatabase(pool);
-  expect(seed.applied).toEqual(["0001_init.sql", "0002_tenancy.sql", "0003_ledger.sql", "0004_identity.sql", "0005_metering.sql", "0006_receivables.sql"]);
+  expect(seed.applied).toEqual(["0001_init.sql", "0002_tenancy.sql", "0003_ledger.sql", "0004_identity.sql", "0005_metering.sql", "0006_receivables.sql", "0007_bank_import.sql"]);
   tenantA = seed.a.org;
   tenantB = seed.b.org;
   unitA = seed.a.unit;

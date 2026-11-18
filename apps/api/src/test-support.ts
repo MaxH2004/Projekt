@@ -1,10 +1,12 @@
 import "reflect-metadata";
 import { randomBytes } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import { migrate } from "@hv/db";
 import pg from "pg";
 import { AppModule } from "./app.module.js";
+import { configureHttp } from "./common/http.js";
 
 export interface TestApp {
   readonly app: INestApplication;
@@ -40,7 +42,8 @@ export async function createTestApp(): Promise<TestApp> {
   await migrate(admin);
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-  const app = moduleRef.createNestApplication();
+  const app = moduleRef.createNestApplication<NestExpressApplication>();
+  configureHttp(app);
   await app.listen(0, "127.0.0.1");
   const base = await app.getUrl();
 

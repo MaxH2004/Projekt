@@ -15,6 +15,8 @@ export const ERROR_CODES = [
   "not_found",
   "conflict",
   "allocation_exceeds_open_amount",
+  "bank_statement_unreadable",
+  "bank_transaction_not_bookable",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

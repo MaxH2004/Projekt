@@ -13,6 +13,8 @@ export interface PaymentInput {
   amountCents: number;
   reference?: string | null;
   allocations?: { chargeId: string; amountCents: number }[];
+  /** Set when the payment books an imported bank transaction. */
+  bankTransactionId?: string;
 }
 
 export interface ChargeFilter {
@@ -153,9 +155,9 @@ export class FinanceService {
 
       const id = (
         await c.query<{ id: string }>(
-          `INSERT INTO payment (tenant_id, tenancy_id, received_on, amount_cents, reference, journal_entry_id)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-          [tenantId, input.tenancyId, input.receivedOn, input.amountCents, input.reference ?? null, entryId],
+          `INSERT INTO payment (tenant_id, tenancy_id, received_on, amount_cents, reference, journal_entry_id, bank_transaction_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [tenantId, input.tenancyId, input.receivedOn, input.amountCents, input.reference ?? null, entryId, input.bankTransactionId ?? null],
         )
       ).rows[0]!.id;
       for (const a of allocations) {
@@ -236,7 +238,7 @@ export class FinanceService {
     const rows = (
       await c.query<Row<Omit<Payment, "allocations">> & { allocations: { chargeId: string; amountCents: string }[] }>(
         `SELECT p.id, p.tenancy_id AS "tenancyId", p.received_on::text AS "receivedOn", p.amount_cents::text AS "amountCents",
-                p.reference, p.reversal_entry_id IS NOT NULL AS reversed,
+                p.reference, p.reversal_entry_id IS NOT NULL AS reversed, p.bank_transaction_id AS "bankTransactionId",
                 (p.amount_cents - coalesce((SELECT sum(a.amount_cents) FROM payment_allocation a WHERE a.payment_id = p.id), 0))::text AS "unallocatedCents",
                 coalesce((SELECT jsonb_agg(jsonb_build_object('chargeId', a.charge_id, 'amountCents', a.amount_cents::text) ORDER BY a.charge_id)
                           FROM payment_allocation a WHERE a.payment_id = p.id), '[]') AS allocations

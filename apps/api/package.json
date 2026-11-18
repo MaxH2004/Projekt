@@ -19,7 +19,8 @@
     "@hv/db": "workspace:*",
     "pg": "^8.23.1",
     "zod": "^4.0.0",
-    "@hv/settlement-engine": "workspace:*"
+    "@hv/settlement-engine": "workspace:*",
+    "@hv/integrations": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/testing": "^12.5.0",

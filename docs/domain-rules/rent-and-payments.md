@@ -17,6 +17,16 @@ implemented.
 | Reversal | A payment can be reversed once. The reversing journal entry mirrors the original; the charges it covered are open again. | same |
 | Cancellation | A charge that is not owed can be cancelled while no payment in force covers it. A cancelled charge is not created again for the same month. | same |
 
+## Bank statements
+
+| Step | Rule | Where |
+| --- | --- | --- |
+| Import | A camt.053 file (versions 001.02 to 001.08) is read; booked entries in euro are stored per bank account, pending and foreign currency entries are skipped. The account is created on first import. Importing posts nothing. | `packages/integrations/src/banking/camt.ts`, `apps/api/src/modules/banking/` |
+| Duplicates | An entry is identified by the bank's reference (`AcctSvcrRef`) if it is unique in the statement, otherwise by its content and its position among identical entries. Importing an overlapping statement adds only new entries. | same |
+| Suggestions | For an open incoming transaction the tenancies are ranked: IBAN booked to the tenancy before (4 points), amount equal to the open amount of a month, all open charges or the monthly rent (2), names of the tenants in payer or remittance text (1). Up to three tenancies are shown; nothing is booked without the user. | `apps/api/src/modules/banking/matching.ts` |
+| Booking | Booking an incoming transaction records a payment with its amount and booking date (see above); the database refuses a payment that differs from its transaction. Reversing the payment opens the transaction again. | `banking.service.ts`, `0007_bank_import.sql` |
+| Ignoring | A transaction that needs no booking here (private, outgoing) can be marked as ignored and unmarked again, unless it is booked. | same |
+
 ## Posting rules
 
 The income statement under § 21 EStG is cash based, see

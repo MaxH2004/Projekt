@@ -9,6 +9,7 @@ export {
 export { FakeBankDataProvider } from "./banking/fake-provider.js";
 export { Psd2BankDataProvider } from "./banking/psd2-provider.js";
 export { createBankDataProvider, type BankProviderKind } from "./banking/factory.js";
+export { CamtFormatError, parseCamt053, type CamtStatement } from "./banking/camt.js";
 
 export type { EmailAttachment, EmailSender, IncomingEmail, IncomingEmailParser, OutgoingEmail } from "./email/port.js";
 export {
