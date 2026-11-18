@@ -18,3 +18,14 @@ export function createTranslate(locale: Locale): Translate {
       return String(value);
     });
 }
+
+/** For keys built at run time from data (e.g. account numbers): true if the catalog has the key. */
+export function isMessageKey(key: string): key is MessageKey {
+  return Object.prototype.hasOwnProperty.call(de, key);
+}
+
+/** Name of an account of the chart in the user's language; the stored name if none is translated. */
+export function accountName(t: Translate, account: { code: string; name: string }): string {
+  const key = `account.${account.code}`;
+  return isMessageKey(key) ? t(key) : account.name;
+}

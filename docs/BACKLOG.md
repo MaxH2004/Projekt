@@ -13,13 +13,13 @@ Last full review: 2026-11-18.
 
 | Area | Done | Open |
 | --- | --- | --- |
-| Master data | API for properties, buildings, units with area history, persons, tenancies with rent history, meters and readings | Interface · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
-| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · generating charges automatically each month (worker job) · interface for all of it |
+| Master data | API and interface for properties, buildings, units, persons and tenancies with rent changes and end; API for area history, meters and readings | Interface for area history, meters and readings, editing persons and buildings · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
+| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · interface for all of it | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · generating charges automatically each month (worker job) · interface: allocating a payment to chosen charges, splitting an expense over several lines or properties, confirmation before cancelling |
 | Receipts | Port for document extraction | Upload (web, app, e-mail forwarding) · file storage · extraction with user confirmation · assignment to property, cost type and allocability · invoice tables |
 | Settlements | Engine core for operating costs with two hand-calculated cases | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · cost types with BetrKV category per invoice · settlement run stored and frozen with rule set version · API and interface · statement as PDF · sending · the simplifications in section 3 |
 | Documents and deadlines | Template system with payment reminder in three languages | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
 | Tax | Chart of accounts maps to the lines of the § 21 EStG statement | Anlage V export · separate reporting under § 35a EStG |
-| Account and subscription | Registration, login, sessions, two-factor authentication, login lock · port for subscription billing | See section 2 · plans and prices · data export · deleting an account and its data |
+| Account and subscription | Registration, login, sessions, two-factor authentication, login lock, with interface · port for subscription billing | QR code for setting up two-factor authentication · See section 2 · plans and prices · data export · deleting an account and its data |
 
 ## 2. Account and security
 
@@ -112,9 +112,13 @@ Ledger and chart of accounts, details in `docs/domain-rules/chart-of-accounts.md
 
 - French and Spanish texts were written by the developer and not reviewed by
   native speakers.
-- The interface does not translate API error codes yet.
-- The user's stored language is not yet used for documents and e-mails.
-- Account names of the chart exist in English only.
+- The user's stored language is not yet used for documents, e-mails or the
+  interface; the interface follows its language cookie or the browser.
+- Account names of the chart are translated in the interface catalogs; the
+  names stored in the database are English. A test that every chart account
+  has a translation is missing.
+- Date inputs use the browser's date picker, whose format follows the browser
+  language, not the chosen interface language.
 - Statutory documents (statements, rent increases) are only meaningful in
   German law; whether they are offered in other languages is undecided.
 
@@ -132,11 +136,16 @@ tests. Nothing is connected.
 
 ## 6. Platform and operations
 
-- Interface: only a placeholder page with language switch. No login, no forms.
-- `packages/ui` does not exist yet.
+- Interface: plain server-rendered pages without a component library;
+  `packages/ui` does not exist yet. Forms need JavaScript (no fallback
+  without it).
+- The interface reaches the API server side only (`API_URL`); in production
+  both must run behind one HTTPS origin, which is not set up.
 - Worker has no jobs and no queue.
 - No file storage (S3-compatible) and no PDF rendering.
-- No end-to-end tests; `tests/e2e` is empty.
+- `tests/e2e/main-flow.mjs` covers the main flow but runs by hand against
+  running servers; not in `pnpm verify` or CI, and Playwright is not a
+  dependency of the repository.
 - No OpenAPI description of the API, although ADR 0001 planned one.
 - `/health` does not check the database.
 - No container images, no deployment, no test server. STACKIT later.
