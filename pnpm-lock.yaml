@@ -101,7 +101,18 @@ importers:
         specifier: ^19.0.0
         version: 19.3.0(@types/react@19.3.0)
 
-  apps/worker: {}
+  apps/worker:
+    dependencies:
+      '@hv/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
 
   packages/contracts:
     dependencies:
@@ -111,6 +122,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@hv/settlement-engine':
+        specifier: workspace:*
+        version: link:../settlement-engine
       pg:
         specifier: ^8.23.1
         version: 8.23.1

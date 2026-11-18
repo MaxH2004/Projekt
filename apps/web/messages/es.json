@@ -136,7 +136,7 @@
   "payments.record": "Registrar",
   "rent.title": "Alquileres",
   "rent.generate": "Generar los alquileres del mes",
-  "rent.generateHint": "Genera para cada contrato vigente los cargos del mes según los importes acordados, prorrateados por días en caso de entrada o salida. Repetirlo no duplica nada.",
+  "rent.generateHint": "Genera para cada contrato vigente los cargos del mes según los importes acordados, prorrateados por días en caso de entrada o salida. Repetirlo no duplica nada. El mes en curso se crea automáticamente; aquí puede generar meses anteriores.",
   "rent.generateSubmit": "Generar los cargos",
   "rent.openItems": "Partidas pendientes",
   "rent.noOpenItems": "No hay partidas pendientes.",

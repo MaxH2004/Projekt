@@ -14,7 +14,7 @@ Last full review: 2026-11-18.
 | Area | Done | Open |
 | --- | --- | --- |
 | Master data | API and interface for properties, buildings, units, persons and tenancies with rent changes and end; API for area history, meters and readings | Interface for area history, meters and readings, editing persons and buildings · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
-| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · interface for all of it | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · generating charges automatically each month (worker job) · interface: allocating a payment to chosen charges, splitting an expense over several lines or properties, confirmation before cancelling |
+| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · interface for all of it | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · interface: allocating a payment to chosen charges, splitting an expense over several lines or properties, confirmation before cancelling |
 | Receipts | Port for document extraction | Upload (web, app, e-mail forwarding) · file storage · extraction with user confirmation · assignment to property, cost type and allocability · invoice tables |
 | Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · correcting a final settlement · paying out refunds · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
 | Documents and deadlines | Template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
@@ -177,7 +177,11 @@ tests. Nothing is connected.
   without it).
 - The interface reaches the API server side only (`API_URL`); in production
   both must run behind one HTTPS origin, which is not set up.
-- Worker has no jobs and no queue.
+- The worker runs periodic jobs (current month's rent charges, expired
+  sessions) every hour; there is no queue for event-driven jobs such as
+  sending e-mails or rendering PDFs. Charges are created automatically for the
+  current month for every organization; there is no setting to switch that
+  off.
 - No file storage (S3-compatible) and no PDF rendering.
 - The end-to-end tests run in CI as a separate job, not in `pnpm verify`;
   Playwright is installed there globally, not as a dependency of the

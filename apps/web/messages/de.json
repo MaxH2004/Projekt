@@ -136,7 +136,7 @@
   "payments.record": "Zahlung buchen",
   "rent.title": "Mieten",
   "rent.generate": "Monatsmieten anfordern",
-  "rent.generateHint": "Erzeugt für jedes laufende Mietverhältnis die Forderungen des Monats aus den vereinbarten Beträgen. Bei Ein- oder Auszug im Monat taggenau anteilig. Mehrfaches Ausführen erzeugt nichts doppelt.",
+  "rent.generateHint": "Erzeugt für jedes laufende Mietverhältnis die Forderungen des Monats aus den vereinbarten Beträgen. Bei Ein- oder Auszug im Monat taggenau anteilig. Mehrfaches Ausführen erzeugt nichts doppelt. Der laufende Monat wird automatisch angelegt; hier holen Sie frühere Monate nach.",
   "rent.generateSubmit": "Forderungen erzeugen",
   "rent.openItems": "Offene Posten",
   "rent.noOpenItems": "Keine offenen Posten.",

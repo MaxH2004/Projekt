@@ -4,3 +4,4 @@ export { postJournalEntry, reverseJournalEntry, type JournalEntryInput, type Jou
 export { SKR04_RENTAL_2026, type ChartAccount } from "./charts/skr04.js";
 export { seedChartOfAccounts } from "./charts/seed.js";
 export { setValueFrom, type VersionedTable } from "./versioned.js";
+export { generateRentCharges } from "./charges.js";

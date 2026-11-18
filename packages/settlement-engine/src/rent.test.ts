@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyCharges, monthPeriod } from "./monthly-charges.js";
+import { monthlyCharges, monthPeriod } from "./rent.js";
 
 // Expected values are calculated by hand, see the comments.
 

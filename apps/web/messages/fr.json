@@ -136,7 +136,7 @@
   "payments.record": "Enregistrer",
   "rent.title": "Loyers",
   "rent.generate": "Appeler les loyers du mois",
-  "rent.generateHint": "Crée pour chaque bail en cours les appels du mois à partir des montants convenus, au prorata des jours en cas d'entrée ou de sortie. Relancer ne crée rien en double.",
+  "rent.generateHint": "Crée pour chaque bail en cours les appels du mois à partir des montants convenus, au prorata des jours en cas d'entrée ou de sortie. Relancer ne crée rien en double. Le mois en cours est créé automatiquement ; ici, vous rattrapez les mois antérieurs.",
   "rent.generateSubmit": "Créer les appels",
   "rent.openItems": "Impayés",
   "rent.noOpenItems": "Aucun impayé.",

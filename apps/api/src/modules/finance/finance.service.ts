@@ -1,10 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { CHARGE_KINDS, type ChargeKind, type Payment, type RentCharge, type RentComponentKind, type TenancyBalance } from "@hv/contracts";
-import { postJournalEntry, reverseJournalEntry, type JournalLineInput } from "@hv/db";
+import { generateRentCharges, postJournalEntry, reverseJournalEntry, type JournalLineInput } from "@hv/db";
 import type pg from "pg";
 import { ApiError } from "../../common/api-error.js";
 import { found, TenantDb } from "../../common/tenant-db.js";
-import { monthlyCharges, monthPeriod, type ComponentVersion } from "./monthly-charges.js";
 import { ENTRY_DESCRIPTION, POSTING_ACCOUNTS } from "./posting-rules.js";
 
 export interface PaymentInput {
@@ -49,44 +48,7 @@ export class FinanceService {
    * a month again only adds what is missing. Returns the new charges.
    */
   generateCharges(tenantId: string, month: string): Promise<RentCharge[]> {
-    const period = monthPeriod(month);
-    return this.db.run(tenantId, async (c) => {
-      const tenancies = (
-        await c.query<{ id: string; from: string; to: string | null }>(
-          `SELECT id, lower(term)::text AS from, (upper(term) - 1)::text AS to FROM tenancy
-           WHERE term && daterange($1::date, $2::date, '[]') ORDER BY lower(term), id`,
-          [period.from, period.to],
-        )
-      ).rows;
-      if (tenancies.length === 0) return [];
-      const versions = (
-        await c.query<{ tenancyId: string; kind: RentComponentKind; amountCents: string; from: string; to: string | null }>(
-          `SELECT tenancy_id AS "tenancyId", kind, amount_cents::text AS "amountCents",
-                  lower(valid)::text AS from, (upper(valid) - 1)::text AS to
-           FROM rent_component WHERE tenancy_id = ANY($1::uuid[]) AND valid && daterange($2::date, $3::date, '[]')`,
-          [tenancies.map((t) => t.id), period.from, period.to],
-        )
-      ).rows;
-
-      const created: string[] = [];
-      for (const tenancy of tenancies) {
-        const own: ComponentVersion[] = versions
-          .filter((v) => v.tenancyId === tenancy.id)
-          .map((v) => ({ kind: v.kind, amountCents: BigInt(v.amountCents), from: v.from, to: v.to }));
-        for (const charge of monthlyCharges(month, tenancy, own)) {
-          const row = (
-            await c.query<{ id: string }>(
-              `INSERT INTO rent_charge (tenant_id, tenancy_id, period_month, kind, amount_cents, due_date)
-               VALUES ($1, $2, $3, $4, $5, $6)
-               ON CONFLICT (tenancy_id, period_month, kind) DO NOTHING RETURNING id`,
-              [tenantId, tenancy.id, period.from, charge.kind, charge.amountCents.toString(), charge.dueDate],
-            )
-          ).rows[0];
-          if (row) created.push(row.id);
-        }
-      }
-      return this.readCharges(c, "c.id = ANY($1::uuid[])", [created]);
-    });
+    return this.db.run(tenantId, async (c) => this.readCharges(c, "c.id = ANY($1::uuid[])", [await generateRentCharges(c, tenantId, month)]));
   }
 
   listCharges(tenantId: string, filter: ChargeFilter): Promise<RentCharge[]> {
