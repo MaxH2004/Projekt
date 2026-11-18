@@ -7,7 +7,7 @@ Stage 1 is defined by the product plan: private landlords with 1–20 units.
 **Rule:** whoever skips, defers or simplifies something records it here in the
 same commit. An item is removed only when it is done and verified.
 
-Last full review: 2026-11-18.
+Last full review: 2026-11-18 (second pass the same day).
 
 ## 1. Stage 1 features
 
@@ -17,7 +17,7 @@ Last full review: 2026-11-18.
 | Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · tenant credit applied to later charges and paid back · settlement credits paid out · other bank bookings to any account (deposit, refund, private transfer) · interface for all of it, with expenses split over lines and payments assigned to chosen charges | Bank statement import from CSV · loan repayments split into interest and principal (no loan accounts in the chart yet) · payment reminder by e-mail |
 | Receipts | Port for document extraction · file storage (local disk) · receipts uploaded in the web interface, attached to an expense when recording it or later, downloadable, never deletable | Upload by app or e-mail forwarding · receipts without an expense yet (inbox) · extraction with user confirmation · invoice tables |
 | Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, credits paid out, cancellation, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
-| Documents and deadlines | Documents per property and tenancy (contract, correspondence, other) with upload, download and deletion · template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
+| Documents and deadlines | Deadlines overview: settlements missing for the last two calendar years, tenancy ends and rent changes of the next six months · documents per property and tenancy (contract, correspondence, other) with upload, download and deletion · template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, maintenance, smoke detectors (need data that is not recorded) · reminders by e-mail |
 | Tax | Chart of accounts maps to the lines of the § 21 EStG statement | Anlage V export · separate reporting under § 35a EStG |
 | Account and subscription | Registration, login, sessions, two-factor authentication with recovery codes, login lock, password and e-mail change, with interface · port for subscription billing | See section 2 · plans and prices · deleting an account and its data (retention duties for bookkeeping records need a decision) · importing an export |
 
@@ -74,6 +74,11 @@ Settlement in the application, details in `docs/domain-rules/operating-costs.md`
 - An area that changes within the period blocks the area key.
 - A final settlement can be cancelled and made again while nothing was paid
   on it; there is no correction statement that shows the difference.
+
+Deadlines:
+
+- Settlement deadlines assume calendar-year periods; a property settled for
+  a different period shows a deadline that may not apply.
 
 Payment reminders:
 

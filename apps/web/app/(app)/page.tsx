@@ -1,4 +1,5 @@
-import type { BankTransactionView, RentCharge } from "@hv/contracts";
+import type { BankTransactionView, Deadline, RentCharge } from "@hv/contracts";
+import { DeadlineList } from "../../components/deadline-list";
 import Link from "next/link";
 import { apiGet } from "../../lib/api";
 import { getTranslate } from "../../lib/locale";
@@ -7,10 +8,11 @@ import { loadPortfolio } from "../../lib/portfolio";
 
 export default async function OverviewPage() {
   const { locale, t } = await getTranslate();
-  const [portfolio, open, bank] = await Promise.all([
+  const [portfolio, open, bank, deadlines] = await Promise.all([
     loadPortfolio(),
     apiGet<RentCharge[]>("/charges?status=open"),
     apiGet<BankTransactionView[]>("/bank-transactions?status=open"),
+    apiGet<Deadline[]>("/deadlines"),
   ]);
   const day = today();
   const overdue = open.filter((c) => c.dueDate <= day);
@@ -50,6 +52,14 @@ export default async function OverviewPage() {
           <span className="stat-label">{t("overview.openTransactions")}</span>
         </Link>
       </div>
+      {deadlines.length > 0 ? (
+        <section className="card">
+          <h2>
+            <Link href="/deadlines">{t("deadlines.next")}</Link>
+          </h2>
+          <DeadlineList deadlines={deadlines.slice(0, 5)} portfolio={portfolio} locale={locale} t={t} />
+        </section>
+      ) : null}
       <section className="card">
         <h2>{t("overview.overdueByTenancy")}</h2>
         {byTenancy.size === 0 ? (

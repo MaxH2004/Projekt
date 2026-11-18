@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { centsSchema, idSchema, isoDateSchema, type ChargeKind } from "./master-data.js";
+import { centsSchema, idSchema, isoDateSchema, type ChargeKind, type RentComponentKind } from "./master-data.js";
 
 /** Calendar month YYYY-MM. */
 export const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -268,3 +268,16 @@ export const bankTransactionOtherSchema = z.object({
   propertyId: idSchema.nullish(),
   description: z.string().trim().min(1).max(500).nullish(),
 });
+
+// --- Deadlines ---
+
+export type Deadline =
+  | {
+      readonly kind: "settlement_due";
+      readonly date: string;
+      readonly propertyId: string;
+      /** Calendar year to settle; the overview assumes calendar-year periods. */
+      readonly year: number;
+    }
+  | { readonly kind: "tenancy_end"; readonly date: string; readonly tenancyId: string }
+  | { readonly kind: "rent_change"; readonly date: string; readonly tenancyId: string; readonly component: RentComponentKind; readonly amountCents: number };

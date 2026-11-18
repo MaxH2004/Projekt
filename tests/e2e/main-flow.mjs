@@ -306,6 +306,9 @@ try {
   assert.deepEqual(exported.tables.property.map((p) => p.name), ["Lindenstraße 5"]);
   assert.ok(exported.tables.journal_entry.length > 0);
 
+  await page.goto(`${base}/deadlines`);
+  await page.getByRole("heading", { name: "Fristen und Termine" }).waitFor();
+
   // Every booking above is in the audit log, attributed to the user.
   await page.goto(`${base}/account/audit`);
   await page.getByRole("cell", { name: "Ausgabe · angelegt" }).first().waitFor();
