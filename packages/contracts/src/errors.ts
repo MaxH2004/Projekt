@@ -14,6 +14,7 @@ export const ERROR_CODES = [
   "email_taken",
   "not_found",
   "conflict",
+  "allocation_exceeds_open_amount",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

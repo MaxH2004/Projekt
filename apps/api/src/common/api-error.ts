@@ -14,6 +14,7 @@ const STATUS: Record<ErrorCode, number> = {
   email_taken: 409,
   not_found: 404,
   conflict: 409,
+  allocation_exceeds_open_amount: 409,
 };
 
 /** An error the client can act on. The body is `{ code, fields? }`, never a sentence. */

@@ -122,7 +122,9 @@ describe("immutability", () => {
           "DELETE FROM journal_line",
           "UPDATE journal_entry SET description = 'changed'",
           "DELETE FROM journal_entry",
-          "TRUNCATE journal_entry, journal_line",
+          // CASCADE: tables like payment reference journal entries; without it the
+          // foreign key refuses first and the trigger is never reached.
+          "TRUNCATE journal_entry, journal_line CASCADE",
         ]) {
           await expect(admin.query(sql), sql).rejects.toThrow(/ledger is immutable/);
         }

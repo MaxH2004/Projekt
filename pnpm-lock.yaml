@@ -32,6 +32,9 @@ importers:
       '@hv/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hv/settlement-engine':
+        specifier: workspace:*
+        version: link:../../packages/settlement-engine
       '@nestjs/common':
         specifier: ^12.5.0
         version: 12.5.0(reflect-metadata@0.2.2)(rxjs@7.8.2)

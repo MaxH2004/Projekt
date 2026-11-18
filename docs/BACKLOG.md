@@ -7,14 +7,14 @@ Stage 1 is defined by the product plan: private landlords with 1–20 units.
 **Rule:** whoever skips, defers or simplifies something records it here in the
 same commit. An item is removed only when it is done and verified.
 
-Last full review: 2026-11-16.
+Last full review: 2026-11-18.
 
 ## 1. Stage 1 features
 
 | Area | Done | Open |
 | --- | --- | --- |
 | Master data | API for properties, buildings, units with area history, persons, tenancies with rent history, meters and readings | Interface · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
-| Finance | Ledger with immutable balanced entries and reversal · chart of accounts | Monthly rent charges · bank statement import (CAMT/CSV) · matching payments to charges · open items · payment reminder by e-mail · income and expenses per property · posting rules: which event books to which account · API and interface for all of it |
+| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments | Bank statement import (CAMT/CSV) · suggesting matches for imported payments · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · expenses and their posting rules · income and expenses per property · generating charges automatically each month (worker job) · interface for all of it |
 | Receipts | Port for document extraction | Upload (web, app, e-mail forwarding) · file storage · extraction with user confirmation · assignment to property, cost type and allocability · invoice tables |
 | Settlements | Engine core for operating costs with two hand-calculated cases | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · cost types with BetrKV category per invoice · settlement run stored and frozen with rule set version · API and interface · statement as PDF · sending · the simplifications in section 3 |
 | Documents and deadlines | Template system with payment reminder in three languages | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
@@ -49,9 +49,28 @@ Settlement engine, details in `docs/domain-rules/operating-costs.md`:
 - Raising advance payments (§ 560 BGB) is only a suggestion value.
 - Heating and hot water are only accepted as finished amounts per unit.
 
+Rent charges and payments, details in `docs/domain-rules/rent-and-payments.md`:
+
+- Posting rules and the open questions there are not reviewed by a tax adviser
+  or lawyer.
+- A payment without explicit allocation covers the oldest charges first; § 366
+  BGB is not modelled.
+- Due date is the first day of the month, not the third working day.
+- Every unit books base rent to the apartment account; units have no type of
+  use (apartment, garage, commercial).
+- Charges are not corrected when the rent is changed retroactively after they
+  were created; a cancelled charge is never created again for the same month,
+  and there is no manual charge for a single month.
+- Tenant credit cannot be applied to later charges or paid back; the payment
+  has to be reversed and recorded again.
+- Allocations of a payment are fixed when it is recorded; reallocating means
+  reversing it.
+- Only one bank account (180000).
+
 Master data:
 
 - Rent components can be dated after the end of a tenancy; nothing trims them.
+  Charges ignore the days after the end.
 - A tenancy and its rent history cannot be corrected or deleted through the
   API, only ended.
 - Meter readings are not checked for plausibility (a lower reading than the
