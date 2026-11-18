@@ -7,6 +7,8 @@ import type { RentComponentKind } from "@hv/contracts";
  */
 export const POSTING_ACCOUNTS = {
   bank: "180000",
+  /** Expenses paid from the landlord's private money. */
+  privateContribution: "218000",
   /** Payments not allocated to a charge: owed back to the tenant or kept for later charges. */
   tenantCredit: "350000",
   income: {
@@ -17,8 +19,13 @@ export const POSTING_ACCOUNTS = {
   } satisfies Record<RentComponentKind, string>,
 } as const;
 
+/** Expense accounts that are not paid in cash and therefore cannot be used for an expense. */
+export const NON_CASH_EXPENSE_ACCOUNTS: readonly string[] = ["622100"];
+
 /** Journal entry descriptions are keys the interface translates, never sentences. */
 export const ENTRY_DESCRIPTION = {
   payment: "rent_payment",
   paymentReversal: "rent_payment_reversal",
+  expense: "expense",
+  expenseReversal: "expense_reversal",
 } as const;

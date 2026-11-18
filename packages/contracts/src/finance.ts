@@ -110,7 +110,10 @@ export interface BankTransactionView {
   readonly counterpartyIban: string | null;
   readonly remittanceInfo: string;
   readonly status: "open" | "booked" | "ignored";
+  /** Rent payment booking an incoming transaction. */
   readonly paymentId: string | null;
+  /** Expense booking an outgoing transaction. */
+  readonly expenseId: string | null;
   /** Tenancies the transaction probably belongs to, best first. Only for open incoming transactions. */
   readonly suggestions: readonly MatchSuggestion[];
 }
@@ -121,3 +124,100 @@ export const bankTransactionBookSchema = z.object({
 });
 
 export const bankTransactionIgnoreSchema = z.object({ ignored: z.boolean() });
+
+// --- Chart of accounts and expenses ---
+
+export interface Account {
+  /** Six-digit account number of the chart. */
+  readonly code: string;
+  readonly name: string;
+  readonly type: "asset" | "liability" | "equity" | "income" | "expense";
+  /** True for expense accounts that cash payments may book to. */
+  readonly forExpenses: boolean;
+}
+
+/** Categories of § 2 BetrKV, the same keys as in the settlement engine. */
+export const OPERATING_COST_CATEGORY_KEYS = [
+  "public_charges",
+  "water_supply",
+  "drainage",
+  "heating",
+  "hot_water",
+  "combined_heating_hot_water",
+  "lift",
+  "street_cleaning_waste",
+  "building_cleaning_pest_control",
+  "garden",
+  "lighting",
+  "chimney_cleaning",
+  "insurance",
+  "caretaker",
+  "antenna_broadband",
+  "laundry_facilities",
+  "other",
+] as const;
+export type OperatingCostCategoryKey = (typeof OPERATING_COST_CATEGORY_KEYS)[number];
+
+export const expenseLineSchema = z.object({
+  accountCode: z.string().regex(/^\d{6}$/),
+  propertyId: idSchema,
+  amountCents: positiveCents,
+  /** Set when the line may go into an operating cost settlement. */
+  operatingCostCategory: z.enum(OPERATING_COST_CATEGORY_KEYS).nullish(),
+});
+
+const expenseDetails = {
+  vendor: z.string().trim().min(1).max(200).nullish(),
+  description: z.string().trim().min(1).max(500).nullish(),
+  lines: z.array(expenseLineSchema).min(1).max(50),
+};
+
+export const expenseInputSchema = z.object({
+  paidOn: isoDateSchema,
+  paidFrom: z.enum(["bank", "private"]),
+  ...expenseDetails,
+});
+
+/** Booking an outgoing bank transaction: amount and date come from the transaction. */
+export const bankTransactionExpenseSchema = z.object(expenseDetails);
+
+export const expenseReverseSchema = z.object({ bookingDate: isoDateSchema });
+
+export interface ExpenseLine {
+  readonly accountCode: string;
+  readonly propertyId: string;
+  readonly amountCents: number;
+  readonly operatingCostCategory: OperatingCostCategoryKey | null;
+}
+
+export interface Expense {
+  readonly id: string;
+  readonly paidOn: string;
+  readonly amountCents: number;
+  readonly paidFrom: "bank" | "private";
+  readonly vendor: string | null;
+  readonly description: string | null;
+  readonly bankTransactionId: string | null;
+  readonly reversed: boolean;
+  readonly lines: readonly ExpenseLine[];
+}
+
+// --- Income and expenses per property ---
+
+export const incomeStatementQuerySchema = z
+  .object({ from: isoDateSchema, to: isoDateSchema })
+  .refine((q) => q.from <= q.to, { path: ["to"] });
+
+export interface IncomeStatement {
+  readonly from: string;
+  readonly to: string;
+  readonly properties: readonly {
+    /** Null for bookings without a property. */
+    readonly propertyId: string | null;
+    readonly accounts: readonly { readonly code: string; readonly type: "income" | "expense"; readonly amountCents: number }[];
+    readonly incomeCents: number;
+    readonly expenseCents: number;
+    /** Income minus expenses. */
+    readonly resultCents: number;
+  }[];
+}

@@ -2,9 +2,11 @@ import { Body, Controller, Get, HttpCode, Param, Post, Put, Query, UseGuards } f
 import {
   bankImportSchema,
   bankTransactionBookSchema,
+  bankTransactionExpenseSchema,
   bankTransactionIgnoreSchema,
   type BankImportResult,
   type BankTransactionView,
+  type Expense,
   type Payment,
 } from "@hv/contracts";
 import { ApiError, parseBody } from "../../common/api-error.js";
@@ -34,6 +36,11 @@ export class BankingController {
   @Post("bank-transactions/:id/book")
   book(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<Payment> {
     return this.banking.book(auth.tenantId, parseId(id), parseBody(bankTransactionBookSchema, body));
+  }
+
+  @Post("bank-transactions/:id/book-expense")
+  bookExpense(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<Expense> {
+    return this.banking.bookExpense(auth.tenantId, parseId(id), parseBody(bankTransactionExpenseSchema, body));
   }
 
   @Put("bank-transactions/:id/ignored")

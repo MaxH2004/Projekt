@@ -1,4 +1,4 @@
-# Rent charges, payments and open items
+# Rent charges, payments, expenses and open items
 
 Status: **not reviewed.** Built on 2026-11-18 without a tax adviser or lawyer.
 The points under "Open questions" need one before go-live. The statutes named
@@ -27,6 +27,19 @@ implemented.
 | Booking | Booking an incoming transaction records a payment with its amount and booking date (see above); the database refuses a payment that differs from its transaction. Reversing the payment opens the transaction again. | `banking.service.ts`, `0007_bank_import.sql` |
 | Ignoring | A transaction that needs no booking here (private, outgoing) can be marked as ignored and unmarked again, unless it is booked. | same |
 
+## Expenses
+
+| Step | Rule | Where |
+| --- | --- | --- |
+| Expense | Money paid for one or more properties, split into lines. Each line names an expense account of the chart, a property and, if it may go into an operating cost settlement, a category of § 2 BetrKV. | `apps/api/src/modules/finance/expense.service.ts`, tables `expense`, `expense_line` |
+| Paid from | `bank` books against the bank account, `private` against private contributions. An outgoing bank transaction is booked as an expense from the bank with its amount and date. | same, `banking.service.ts` |
+| Accounts | Only expense accounts; depreciation (622100) is excluded because it is not a payment. | `posting-rules.ts` |
+| Reversal | An expense can be reversed once; a bank transaction it booked is open again. | same |
+| Income statement | Income and expense accounts per property for a period, by booking date, from the ledger. Reversals cancel out. | `GET /reports/income-statement` |
+
+The category marks a line as a candidate for the settlement; whether the cost
+may be passed on under the contract and BetrKV is decided when settling.
+
 ## Posting rules
 
 The income statement under § 21 EStG is cash based, see
@@ -38,9 +51,12 @@ arrives, dated with the day it was received.
 | Payment covering base rent | 180000 Bank | 410500 Rent for apartments |
 | Payment covering an operating or heating cost advance | 180000 Bank | 410800 Advance payments for operating costs |
 | Part of a payment not covering a charge | 180000 Bank | 350000 Other liabilities (tenant credit) |
-| Reversal of a payment | the original lines with opposite signs | |
+| Expense paid from the bank | expense account of each line | 180000 Bank |
+| Expense paid from private money | expense account of each line | 218000 Private contributions |
+| Reversal of a payment or expense | the original lines with opposite signs | |
 
-Every line carries the property as cost centre. The accounts are in
+Every income and expense line carries the property as cost centre; the bank
+and private contribution lines of an expense carry none. The accounts are in
 `apps/api/src/modules/finance/posting-rules.ts`.
 
 ## Open questions

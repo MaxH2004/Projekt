@@ -14,7 +14,7 @@ Last full review: 2026-11-18.
 | Area | Done | Open |
 | --- | --- | --- |
 | Master data | API for properties, buildings, units with area history, persons, tenancies with rent history, meters and readings | Interface · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
-| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment | Bank statement import from CSV · booking outgoing transactions as expenses · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · expenses and their posting rules · income and expenses per property · generating charges automatically each month (worker job) · interface for all of it |
+| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · generating charges automatically each month (worker job) · interface for all of it |
 | Receipts | Port for document extraction | Upload (web, app, e-mail forwarding) · file storage · extraction with user confirmation · assignment to property, cost type and allocability · invoice tables |
 | Settlements | Engine core for operating costs with two hand-calculated cases | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · cost types with BetrKV category per invoice · settlement run stored and frozen with rule set version · API and interface · statement as PDF · sending · the simplifications in section 3 |
 | Documents and deadlines | Template system with payment reminder in three languages | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
@@ -65,6 +65,15 @@ Rent charges and payments, details in `docs/domain-rules/rent-and-payments.md`:
   has to be reversed and recorded again.
 - Allocations of a payment are fixed when it is recorded; reallocating means
   reversing it.
+- Expense accounts are chosen by the user; there is no suggestion from vendor,
+  text or BetrKV category, and no check that category and account fit.
+- An expense has no service period; the settlement will have to decide
+  whether costs count by payment date or by the period they cover.
+- Expenses cannot carry a receipt yet.
+- Incoming money that is not rent (insurance refund, deposit) cannot be
+  booked, only ignored.
+- The income statement is by booking date over all accounts and does not
+  apply the tax rules for Anlage V (e.g. depreciation, § 11 EStG).
 - Only one bank account (180000) in the ledger, although several bank
   accounts can be imported.
 
@@ -76,8 +85,8 @@ Bank import:
 - Batch bookings (several transaction details in one entry) are not split;
   the first detail names the counterparty.
 - No CSV import; banks' CSV layouts differ and need a column mapping.
-- Outgoing transactions can only be ignored, not booked; the ledger's bank
-  balance therefore differs from the real one.
+- The ledger's bank balance differs from the real one as long as
+  transactions stay unbooked or ignored; there is no reconciliation view.
 - Suggestion weights are a first guess and not measured on real data.
 - The JSON body limit of the API is raised to 3 MB for all routes because the
   statement travels as a JSON string; a separate upload route would allow a
