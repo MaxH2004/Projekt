@@ -15,3 +15,4 @@ export {
   type SettlementUnit,
   type StatementLine,
 } from "./operating-costs.js";
+export { monthlyCharges, monthPeriod, type ComponentVersion, type MonthlyCharge } from "./rent.js";

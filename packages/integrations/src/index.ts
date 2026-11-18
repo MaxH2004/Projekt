@@ -9,6 +9,7 @@ export {
 export { FakeBankDataProvider } from "./banking/fake-provider.js";
 export { Psd2BankDataProvider } from "./banking/psd2-provider.js";
 export { createBankDataProvider, type BankProviderKind } from "./banking/factory.js";
+export { CamtFormatError, parseCamt053, type CamtStatement } from "./banking/camt.js";
 
 export type { EmailAttachment, EmailSender, IncomingEmail, IncomingEmailParser, OutgoingEmail } from "./email/port.js";
 export {
@@ -41,3 +42,7 @@ export {
   FakeSubscriptionBilling,
   type SubscriptionBillingProviderKind,
 } from "./subscription-billing/providers.js";
+
+export { assertSafeKey, FileStorageNotConnectedError, type FileStorage } from "./file-storage/port.js";
+export { createFileStorage, FakeFileStorage, LocalFileStorage, ObjectStorage, type FileStorageKind } from "./file-storage/providers.js";
+export { ACCEPTED_FILE_TYPES, detectFileType, type AcceptedFileType } from "./file-storage/content-type.js";

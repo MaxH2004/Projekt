@@ -7,9 +7,11 @@ import type { Pool, PoolClient } from "pg";
  *
  * The login user of the environment must be a member of hv_app.
  */
-export function withTenant<T>(pool: Pool, tenantId: string, fn: (client: PoolClient) => Promise<T>): Promise<T> {
+export function withTenant<T>(pool: Pool, tenantId: string, fn: (client: PoolClient) => Promise<T>, userId?: string): Promise<T> {
   return inTransaction(pool, async (client) => {
     await enterTenant(client, tenantId);
+    // The audit log records who made a change; absent for jobs.
+    if (userId) await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
     return fn(client);
   });
 }

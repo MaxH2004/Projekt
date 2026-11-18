@@ -3,13 +3,23 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "migrate": "tsx src/cli.ts"
   },
-  "dependencies": { "pg": "^8.23.1" },
-  "devDependencies": { "@types/pg": "^8.23.1" }
+  "dependencies": {
+    "pg": "^8.23.1",
+    "@hv/settlement-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
 }

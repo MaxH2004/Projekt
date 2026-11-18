@@ -156,6 +156,9 @@ describe("persons and tenancies", () => {
       rentType: "fixed",
       personIds: [erika.id, company.id].sort(),
       rent: { base_rent: 80_000, operating_cost_advance: 15_000 },
+      depositCents: null,
+      depositHeld: null,
+      occupants: null,
     });
   });
 

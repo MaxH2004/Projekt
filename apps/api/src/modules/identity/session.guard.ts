@@ -1,6 +1,7 @@
 import { createParamDecorator, Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common";
 import type { Request } from "express";
 import { ApiError } from "../../common/api-error.js";
+import { currentRequest } from "../../common/request-context.js";
 import { IdentityService, type AuthContext } from "./identity.service.js";
 
 export const SESSION_COOKIE = "session";
@@ -27,6 +28,9 @@ export class SessionGuard implements CanActivate {
     if (!auth || !token) throw new ApiError("unauthenticated");
     request.auth = auth;
     request.sessionToken = token;
+    // Read by TenantDb, so the audit log knows who made a change.
+    const requestContext = currentRequest();
+    if (requestContext) requestContext.userId = auth.userId;
     return true;
   }
 }

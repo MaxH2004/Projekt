@@ -72,6 +72,9 @@ export interface Person {
 
 export const RENT_COMPONENT_KINDS = ["base_rent", "operating_cost_advance", "heating_cost_advance"] as const;
 export type RentComponentKind = (typeof RENT_COMPONENT_KINDS)[number];
+/** What a charge can be for: a rent component, or the balance of an operating cost settlement. */
+export const CHARGE_KINDS = [...RENT_COMPONENT_KINDS, "settlement_balance"] as const;
+export type ChargeKind = (typeof CHARGE_KINDS)[number];
 export const RENT_TYPES = ["fixed", "graduated", "indexed"] as const;
 
 export const tenancyInputSchema = z
@@ -102,7 +105,16 @@ export interface Tenancy {
   readonly personIds: readonly string[];
   /** Monthly amounts valid on the requested day; a component without an amount is missing. */
   readonly rent: Partial<Record<RentComponentKind, number>>;
+  /** Agreed deposit; null if none is recorded. */
+  readonly depositCents: number | null;
+  /** Where the deposit is held, e.g. a savings account. */
+  readonly depositHeld: string | null;
+  /** People living in the unit on the requested day; null if not recorded. */
+  readonly occupants: number | null;
 }
+
+export const tenancyDepositSchema = z.object({ depositCents: centsSchema.nullable(), depositHeld: optionalText(200) });
+export const tenancyOccupantsSchema = z.object({ persons: z.number().int().min(0).max(99), validFrom: isoDateSchema });
 
 // --- Meters ---
 

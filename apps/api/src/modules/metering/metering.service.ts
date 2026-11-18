@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { Meter, MeterReading } from "@hv/contracts";
+import { ApiError } from "../../common/api-error.js";
 import { found, TenantDb } from "../../common/tenant-db.js";
 
 const METER = `id, unit_id AS "unitId", building_id AS "buildingId", kind, measure, serial_number AS "serialNumber"`;
@@ -61,8 +62,19 @@ export class MeteringService {
   /** One reading per meter and day; a second one for the same day is a `conflict`. */
   addReading(tenantId: string, meterId: string, input: { readingDate: string; value: string }): Promise<MeterReading> {
     return this.db.run(tenantId, async (c) => {
-      // Checked first: the one-per-day constraint looks across tenants.
-      found((await c.query("SELECT 1 FROM meter WHERE id = $1", [meterId])).rows[0]);
+      // Checked first: the one-per-day constraint looks across tenants. The lock
+      // keeps two readings of the same meter from passing the check together.
+      found((await c.query("SELECT 1 FROM meter WHERE id = $1 FOR UPDATE", [meterId])).rows[0]);
+      // A meter only counts up: a reading lies between the one before and the one after.
+      // A replaced meter is a new meter.
+      const { implausible } = (
+        await c.query<{ implausible: boolean }>(
+          `SELECT EXISTS (SELECT FROM meter_reading WHERE meter_id = $1 AND reading_date < $2 AND value > $3::numeric)
+               OR EXISTS (SELECT FROM meter_reading WHERE meter_id = $1 AND reading_date > $2 AND value < $3::numeric) AS implausible`,
+          [meterId, input.readingDate, input.value],
+        )
+      ).rows[0]!;
+      if (implausible) throw new ApiError("reading_not_plausible", ["value"]);
       return (
         await c.query<MeterReading>(
           `INSERT INTO meter_reading (tenant_id, meter_id, reading_date, value) VALUES ($1, $2, $3, $4::numeric) RETURNING ${READING}`,

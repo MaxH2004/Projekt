@@ -1,0 +1,10 @@
+# Build context is the repository root; send sources only.
+**/node_modules
+**/dist
+**/.next
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+.git
+coverage

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { getTranslate } from "../lib/locale";
-import { LanguageSwitcher } from "./language-switcher";
+import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getTranslate();
@@ -9,15 +9,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const { locale, t } = await getTranslate();
+  const { locale } = await getTranslate();
   return (
     <html lang={locale}>
-      <body>
-        <header>
-          <LanguageSwitcher locale={locale} t={t} />
-        </header>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

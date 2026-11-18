@@ -30,3 +30,81 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+
+  # Known vulnerabilities: production dependencies fail the build, development
+  # tools are reported only (they run on our own code, not on user input).
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm audit --prod --audit-level=low
+      - run: pnpm audit || true
+
+  # The end-to-end runs against the real servers, connected as the restricted
+  # database login an environment uses (infra/scripts/create-roles.sql).
+  e2e:
+    runs-on: ubuntu-latest
+    needs: verify
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hv_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PLAYWRIGHT_VERSION: 1.63.0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Create roles and migrate
+        run: |
+          psql postgres://postgres:postgres@127.0.0.1:5432/hv_e2e -v owner_password=ci-owner -v app_password=ci-login -v backup_password=ci-backup -f infra/scripts/create-roles.sql
+          DATABASE_URL=postgres://hv_owner:ci-owner@127.0.0.1:5432/hv_e2e pnpm db:migrate
+      - name: Start API and web
+        run: |
+          cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
+          (cd apps/api && DATABASE_URL=postgres://hv_login:ci-login@127.0.0.1:5432/hv_e2e AUTH_SECRET_KEY=$(openssl rand -base64 32) COOKIE_SECURE=false TRUST_PROXY=loopback FILE_STORAGE=local FILE_STORAGE_DIR=$RUNNER_TEMP/files PORT=3001 nohup node dist/main.js > ../../api.log 2>&1 &)
+          (cd apps/web && API_URL=http://127.0.0.1:3001 COOKIE_SECURE=false HOSTNAME=127.0.0.1 PORT=3000 nohup node .next/standalone/apps/web/server.js > ../../web.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/login > /dev/null && break; sleep 1; done
+      - name: Install Playwright
+        run: npm install -g playwright@$PLAYWRIGHT_VERSION && npx -y playwright@$PLAYWRIGHT_VERSION install --with-deps chromium
+      - name: End-to-end tests
+        run: |
+          export NODE_PATH=$(npm root -g)
+          node tests/e2e/main-flow.mjs
+          node tests/e2e/account-security.mjs
+      - name: Backup and restore check
+        run: |
+          DATABASE_URL=postgres://hv_backup:ci-backup@127.0.0.1:5432/hv_e2e infra/scripts/backup.sh backups
+          ADMIN_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres infra/scripts/restore-check.sh backups/*.dump
+      - if: failure()
+        run: tail -100 api.log web.log
+
+  images:
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the container images
+        run: |
+          for target in migrate api worker web; do
+            docker build -f infra/docker/Dockerfile --target $target -t hv/$target:ci .
+          done

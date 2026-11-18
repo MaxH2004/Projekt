@@ -14,6 +14,19 @@ export const ERROR_CODES = [
   "email_taken",
   "not_found",
   "conflict",
+  "rate_limited",
+  "file_type_not_accepted",
+  "credit_insufficient",
+  "reading_not_plausible",
+  "file_too_large",
+  "file_storage_unavailable",
+  "allocation_exceeds_open_amount",
+  "bank_statement_unreadable",
+  "bank_transaction_not_bookable",
+  "settlement_unit_area",
+  "settlement_key_missing",
+  "settlement_persons_missing",
+  "settlement_nothing_to_settle",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

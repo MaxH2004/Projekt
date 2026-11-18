@@ -4,9 +4,9 @@ import { setLocale } from "./actions/set-locale";
 
 export function LanguageSwitcher({ locale, t }: { locale: Locale; t: Translate }) {
   return (
-    <form action={setLocale}>
-      <label>
-        {t("language.label")}{" "}
+    <form action={setLocale} className="language-form">
+      <label className="language-form">
+        <span className="muted small">{t("language.label")}</span>
         <select name="locale" defaultValue={locale}>
           {SUPPORTED_LOCALES.map((code) => (
             <option key={code} value={code}>
@@ -14,8 +14,10 @@ export function LanguageSwitcher({ locale, t }: { locale: Locale; t: Translate }
             </option>
           ))}
         </select>
-      </label>{" "}
-      <button type="submit">{t("language.apply")}</button>
+      </label>
+      <button type="submit" className="secondary">
+        {t("language.apply")}
+      </button>
     </form>
   );
 }

@@ -3,8 +3,10 @@ import {
   isoDateSchema,
   personInputSchema,
   rentChangeSchema,
+  tenancyDepositSchema,
   tenancyEndSchema,
   tenancyInputSchema,
+  tenancyOccupantsSchema,
   type Person,
   type Tenancy,
 } from "@hv/contracts";
@@ -56,6 +58,22 @@ export class TenancyController {
   @HttpCode(200)
   end(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<Tenancy> {
     return this.tenancies.endTenancy(auth.tenantId, parseId(id), parseBody(tenancyEndSchema, body).endDate);
+  }
+
+  @Delete("tenancies/:id")
+  @HttpCode(204)
+  deleteTenancy(@Auth() auth: AuthContext, @Param("id") id: string): Promise<void> {
+    return this.tenancies.deleteTenancy(auth.tenantId, parseId(id));
+  }
+
+  @Put("tenancies/:id/deposit")
+  setDeposit(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<Tenancy> {
+    return this.tenancies.setDeposit(auth.tenantId, parseId(id), parseBody(tenancyDepositSchema, body));
+  }
+
+  @Put("tenancies/:id/occupants")
+  setOccupants(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<Tenancy> {
+    return this.tenancies.setOccupants(auth.tenantId, parseId(id), parseBody(tenancyOccupantsSchema, body));
   }
 
   @Put("tenancies/:id/rent")

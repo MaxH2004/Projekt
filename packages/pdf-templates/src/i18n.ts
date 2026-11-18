@@ -11,6 +11,8 @@ export interface Translator {
   /** Translated message with placeholders filled. The result is plain text, not HTML. */
   t(key: MessageKey, params?: Readonly<Record<string, string | number>>): string;
   money(cents: bigint): string;
+  /** A number with a fixed count of decimals, e.g. an area. */
+  decimal(value: number, digits: number): string;
   date(isoDate: string): string;
 }
 
@@ -35,6 +37,9 @@ export function createTranslator(locale: Locale): Translator {
       const abs = negative ? -cents : cents;
       const decimal = `${negative ? "-" : ""}${abs / 100n}.${(abs % 100n).toString().padStart(2, "0")}`;
       return currency.format(decimal as unknown as number);
+    },
+    decimal(value, digits) {
+      return new Intl.NumberFormat(tag, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
     },
     date(isoDate) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) throw new RangeError(`Invalid date: ${isoDate}`);

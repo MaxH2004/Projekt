@@ -1,0 +1,80 @@
+# The whole stack: database, migration, API, worker and web interface.
+# For a test server or a local check of the images, see docs/OPERATIONS.md.
+#
+#   cp infra/docker/.env.example infra/docker/.env   # then set every secret
+#   docker compose -f infra/docker/compose.yaml --env-file infra/docker/.env up --build
+#
+# Only the web interface is published, on 127.0.0.1; a reverse proxy with TLS
+# belongs in front of it.
+name: hv
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: hv
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      HV_OWNER_PASSWORD: ${HV_OWNER_PASSWORD:?set in .env}
+      HV_LOGIN_PASSWORD: ${HV_LOGIN_PASSWORD:?set in .env}
+      HV_BACKUP_PASSWORD: ${HV_BACKUP_PASSWORD:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+      - ../scripts/create-roles.sql:/hv/create-roles.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "hv"]
+      interval: 5s
+      retries: 20
+
+  migrate:
+    image: hv/migrate:${TAG:-local}
+    build: { context: ../.., dockerfile: infra/docker/Dockerfile, target: migrate }
+    environment:
+      DATABASE_URL: postgres://hv_owner:${HV_OWNER_PASSWORD}@postgres:5432/hv
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    image: hv/api:${TAG:-local}
+    build: { context: ../.., dockerfile: infra/docker/Dockerfile, target: api }
+    environment:
+      DATABASE_URL: postgres://hv_login:${HV_LOGIN_PASSWORD}@postgres:5432/hv
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set in .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # The web container forwards the client address; it sits on this private network.
+      TRUST_PROXY: uniquelocal
+      HOST: 0.0.0.0
+      PORT: "3001"
+      FILE_STORAGE: local
+      FILE_STORAGE_DIR: /data/files
+    volumes:
+      - files:/data/files
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    image: hv/worker:${TAG:-local}
+    build: { context: ../.., dockerfile: infra/docker/Dockerfile, target: worker }
+    environment:
+      DATABASE_URL: postgres://hv_login:${HV_LOGIN_PASSWORD}@postgres:5432/hv
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  web:
+    image: hv/web:${TAG:-local}
+    build: { context: ../.., dockerfile: infra/docker/Dockerfile, target: web }
+    environment:
+      API_URL: http://api:3001
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  files:

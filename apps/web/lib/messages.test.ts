@@ -1,6 +1,6 @@
-import { SUPPORTED_LOCALES } from "@hv/contracts";
+import { ERROR_CODES, MATCH_REASONS, OPERATING_COST_CATEGORY_KEYS, RENT_COMPONENT_KINDS, RENT_TYPES, SUPPORTED_LOCALES } from "@hv/contracts";
 import { describe, expect, it } from "vitest";
-import { createTranslate, MESSAGES } from "./messages";
+import { createTranslate, isMessageKey, MESSAGES } from "./messages";
 
 describe("interface messages", () => {
   it("define the same keys and placeholders in every locale", () => {
@@ -19,5 +19,16 @@ describe("interface messages", () => {
       const t = createTranslate(locale);
       for (const code of SUPPORTED_LOCALES) expect(t(`language.${code}`).length).toBeGreaterThan(0);
     }
+  });
+
+  it("translates every code the API and the domain can send", () => {
+    const keys = [
+      ...ERROR_CODES.map((c) => `error.${c}`),
+      ...MATCH_REASONS.map((r) => `match.${r}`),
+      ...OPERATING_COST_CATEGORY_KEYS.map((c) => `category.${c}`),
+      ...RENT_COMPONENT_KINDS.map((k) => `rentComponent.${k}`),
+      ...RENT_TYPES.map((r) => `rentType.${r}`),
+    ];
+    expect(keys.filter((k) => !isMessageKey(k))).toEqual([]);
   });
 });

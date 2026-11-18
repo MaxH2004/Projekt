@@ -18,7 +18,7 @@ packages/
     fixtures/          reviewed settlement cases as test data
   db/                  SQL migrations, tenant isolation, ledger posting
   integrations/        ports to external services: banking, email,
-                       document-extraction, subscription-billing
+                       document-extraction, subscription-billing, file-storage
   contracts/           shared types and API schemas, supported locales
   pdf-templates/       localized HTML templates for letters and settlements
   ui/                  shared interface components (not created yet)
@@ -27,8 +27,10 @@ docs/
   domain-rules/        rules and sources for BetrKV, HeizkostenV, CO2KostAufG
   STRUCTURE.md         this document
   BACKLOG.md           everything open, skipped or simplified
+  OPERATIONS.md        running an environment: roles, deployment, backups
 infra/
   compose.yaml         local database
+  docker/              container images and the full-stack compose file
   scripts/             check and operations scripts
 tests/e2e/             end-to-end tests through the interface
 .github/workflows/     CI

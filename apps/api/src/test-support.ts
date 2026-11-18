@@ -1,10 +1,13 @@
 import "reflect-metadata";
 import { randomBytes } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import { migrate } from "@hv/db";
 import pg from "pg";
 import { AppModule } from "./app.module.js";
+import { configureHttp } from "./common/http.js";
+import { RateLimiter } from "./common/rate-limit.js";
 
 export interface TestApp {
   readonly app: INestApplication;
@@ -33,6 +36,7 @@ export async function createTestApp(): Promise<TestApp> {
   process.env.DATABASE_URL = url;
   process.env.AUTH_SECRET_KEY = randomBytes(32).toString("base64");
   delete process.env.COOKIE_SECURE;
+  process.env.FILE_STORAGE = "fake";
 
   const admin = new pg.Client({ connectionString: url });
   await admin.connect();
@@ -40,7 +44,11 @@ export async function createTestApp(): Promise<TestApp> {
   await migrate(admin);
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-  const app = moduleRef.createNestApplication();
+  const app = moduleRef.createNestApplication<NestExpressApplication>();
+  configureHttp(app);
+  // Tests log in far more often than people do; rate-limit tests set their own limits.
+  const limiter = app.get(RateLimiter);
+  limiter.limits = { credentials: { max: 1_000_000, windowMs: 60_000 }, register: { max: 1_000_000, windowMs: 60_000 } };
   await app.listen(0, "127.0.0.1");
   const base = await app.getUrl();
 
