@@ -1,5 +1,6 @@
 import { formatIban, PASSWORD_MIN_LENGTH, type MeResponse, type OrganizationDetails, type TotpSetupResponse } from "@hv/contracts";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { Field } from "../../../components/field";
 import { ActionButton, Form } from "../../../components/form";
 import { apiGet, RECOVERY_CODES_COOKIE, TOTP_SETUP_COOKIE } from "../../../lib/api";
@@ -42,6 +43,9 @@ export default async function AccountPage() {
   return (
     <>
       <h1>{t("account.title")}</h1>
+      <p>
+        <Link href="/account/audit">{t("audit.title")}</Link>
+      </p>
       <section className="card">
         <dl className="facts">
           <div className="fact">

@@ -218,6 +218,13 @@ try {
   assert.match(reminderText, new RegExp(`bis zum 15\\. Januar ${year + 1} auf das Konto DE89 3704 0044 0532 0130 00`));
   await reminder.close();
 
+  // Every booking above is in the audit log, attributed to the user.
+  await page.goto(`${base}/account/audit`);
+  await page.getByRole("cell", { name: "Ausgabe · angelegt" }).first().waitFor();
+  await page.getByRole("cell", { name: "Zahlung · angelegt" }).first().waitFor();
+  await page.getByRole("cell", { name: "Abrechnung · angelegt" }).first().waitFor();
+  await page.goBack();
+
   await page.getByRole("combobox", { name: "Sprache" }).selectOption("fr");
   await submit(page, "Übernehmen");
   await page.getByRole("link", { name: "Aperçu" }).waitFor();

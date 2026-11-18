@@ -23,7 +23,8 @@ Last full review: 2026-11-18.
 
 ## 2. Account and security
 
-Done: password and e-mail change with the current password (a password change
+Done: audit log of every change to financial data with user and time,
+append-only in the database and shown on the account page; password and e-mail change with the current password (a password change
 ends the other sessions), recovery codes for two-factor authentication and
 switching it off, rate limits per client address on login, registration and
 every password check, security headers on API and interface, no CORS, expired
@@ -43,8 +44,9 @@ sessions deleted at login and by `deleteExpiredSessions`.
   inlines scripts and would need a nonce per request.
 - CSRF protection: `SameSite=Lax` cookies plus the origin check of Next.js
   server actions; the API itself has no CSRF token.
-- No audit log. The plan requires one for changes to financial data from
-  stage 1.
+- The audit log covers the financial tables and the organization's bank
+  details, not master data such as properties, units and persons. It keeps
+  every entry forever; retention and export are not decided.
 - No penetration test, no dependency or secret scanning in CI.
 
 ## 3. Simplifications in what exists

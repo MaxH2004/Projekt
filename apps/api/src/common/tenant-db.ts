@@ -3,6 +3,7 @@ import { idSchema } from "@hv/contracts";
 import { withTenant } from "@hv/db";
 import type pg from "pg";
 import { ApiError } from "./api-error.js";
+import { currentRequest } from "./request-context.js";
 import { PG_POOL } from "./tokens.js";
 
 /** Access to tenant data. Every call is one transaction limited to the given tenant. */
@@ -17,7 +18,7 @@ export class TenantDb {
    */
   async run<T>(tenantId: string, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
     try {
-      return await withTenant(this.pool, tenantId, fn);
+      return await withTenant(this.pool, tenantId, fn, currentRequest()?.userId);
     } catch (err) {
       const code = typeof err === "object" && err !== null ? (err as { code?: string }).code : undefined;
       const detail = String((err as { detail?: string }).detail ?? "");

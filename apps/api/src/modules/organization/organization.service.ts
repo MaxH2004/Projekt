@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { OrganizationDetails } from "@hv/contracts";
+import type { AuditEntry, OrganizationDetails } from "@hv/contracts";
 import { found, TenantDb } from "../../common/tenant-db.js";
 
 export type OrganizationDetailsInput = Omit<{ [K in keyof OrganizationDetails]?: OrganizationDetails[K] | null }, "name">;
@@ -26,5 +26,19 @@ export class OrganizationService {
       );
       return found((await c.query<OrganizationDetails>(SELECT)).rows[0]);
     });
+  }
+
+  /** Newest changes first; `before` continues a page. */
+  auditLog(tenantId: string, limit: number, before?: number): Promise<AuditEntry[]> {
+    return this.db.run(tenantId, async (c) =>
+      (
+        await c.query<AuditEntry>(
+          `SELECT id::int, at::text, user_id AS "userId", table_name AS "table", row_id AS "rowId", action,
+                  old_row AS "oldRow", new_row AS "newRow"
+           FROM audit_log WHERE ($1::bigint IS NULL OR id < $1) ORDER BY id DESC LIMIT $2`,
+          [before ?? null, limit],
+        )
+      ).rows,
+    );
   }
 }

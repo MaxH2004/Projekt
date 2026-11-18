@@ -49,3 +49,21 @@ export interface OrganizationDetails {
 export function formatIban(iban: string): string {
   return iban.replace(/(.{4})/g, "$1 ").trim();
 }
+
+export const auditQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+  before: z.coerce.number().int().min(1).optional(),
+});
+
+/** One change to financial data. */
+export interface AuditEntry {
+  readonly id: number;
+  readonly at: string;
+  /** Null for changes made by background jobs or at registration. */
+  readonly userId: string | null;
+  readonly table: string;
+  readonly rowId: string | null;
+  readonly action: "insert" | "update" | "delete";
+  readonly oldRow: Record<string, unknown> | null;
+  readonly newRow: Record<string, unknown> | null;
+}

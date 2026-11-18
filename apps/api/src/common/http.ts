@@ -1,6 +1,7 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { BANK_STATEMENT_MAX_LENGTH } from "@hv/contracts";
 import type { NextFunction, Request, Response } from "express";
+import { requestContextMiddleware } from "./request-context.js";
 
 /**
  * HTTP settings shared by the server and the tests.
@@ -18,6 +19,7 @@ export function configureHttp(app: NestExpressApplication, env: NodeJS.ProcessEn
   app.useBodyParser("json", { limit: BANK_STATEMENT_MAX_LENGTH * 2 });
   app.disable("x-powered-by");
   if (env.TRUST_PROXY) app.set("trust proxy", env.TRUST_PROXY);
+  app.use(requestContextMiddleware);
   app.use((_req: Request, res: Response, next: NextFunction) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");

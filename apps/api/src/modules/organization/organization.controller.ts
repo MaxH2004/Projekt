@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
-import { organizationDetailsSchema, type OrganizationDetails } from "@hv/contracts";
+import { Body, Controller, Get, Put, Query, UseGuards } from "@nestjs/common";
+import { auditQuerySchema, organizationDetailsSchema, type AuditEntry, type OrganizationDetails } from "@hv/contracts";
 import { parseBody } from "../../common/api-error.js";
 import { Auth, SessionGuard, type AuthContext } from "../identity/index.js";
 import { OrganizationService } from "./organization.service.js";
@@ -17,5 +17,11 @@ export class OrganizationController {
   @Put("details")
   save(@Auth() auth: AuthContext, @Body() body: unknown): Promise<OrganizationDetails> {
     return this.organization.saveDetails(auth.tenantId, parseBody(organizationDetailsSchema, body));
+  }
+
+  @Get("audit-log")
+  auditLog(@Auth() auth: AuthContext, @Query() query: Record<string, string>): Promise<AuditEntry[]> {
+    const q = parseBody(auditQuerySchema, query);
+    return this.organization.auditLog(auth.tenantId, q.limit, q.before);
   }
 }
