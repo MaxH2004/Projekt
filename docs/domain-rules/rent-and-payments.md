@@ -53,7 +53,12 @@ arrives, dated with the day it was received.
 | Part of a payment not covering a charge | 180000 Bank | 350000 Other liabilities (tenant credit) |
 | Expense paid from the bank | expense account of each line | 180000 Bank |
 | Expense paid from private money | expense account of each line | 218000 Private contributions |
+| Tenant credit applied to a charge later | 350000 Other liabilities | 410500 / 410800 by charge |
+| Overpayment paid back | 350000 Other liabilities | 180000 Bank |
+| Settlement credit paid back | 410850 Settlement payments and refunds | 180000 Bank |
+| Other bank booking (deposit, refund, private) | 180000 Bank or the chosen account, by direction | the other one |
 | Reversal of a payment or expense | the original lines with opposite signs | |
+| Reversal of a payment with credit applied later | also the entries that applied it | |
 
 Every income and expense line carries the property as cost centre; the bank
 and private contribution lines of an expense carry none. The accounts are in

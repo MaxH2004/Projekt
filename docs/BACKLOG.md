@@ -14,9 +14,9 @@ Last full review: 2026-11-18.
 | Area | Done | Open |
 | --- | --- | --- |
 | Master data | API and interface for properties, buildings, units, persons and tenancies with rent changes and end; API for area history, meters and readings | Interface for area history, meters and readings, editing persons and buildings · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
-| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · interface for all of it | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · interface: allocating a payment to chosen charges, splitting an expense over several lines or properties, confirmation before cancelling |
+| Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · tenant credit applied to later charges and paid back · settlement credits paid out · other bank bookings to any account (deposit, refund, private transfer) · interface for all of it, with expenses split over lines and payments assigned to chosen charges | Bank statement import from CSV · loan repayments split into interest and principal (no loan accounts in the chart yet) · payment reminder by e-mail |
 | Receipts | Port for document extraction · file storage (local disk) · receipts uploaded in the web interface, attached to an expense when recording it or later, downloadable, never deletable | Upload by app or e-mail forwarding · receipts without an expense yet (inbox) · extraction with user confirmation · invoice tables |
-| Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · correcting a final settlement · paying out refunds · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
+| Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, credits paid out, cancellation, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
 | Documents and deadlines | Documents per property and tenancy (contract, correspondence, other) with upload, download and deletion · template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
 | Tax | Chart of accounts maps to the lines of the § 21 EStG statement | Anlage V export · separate reporting under § 35a EStG |
 | Account and subscription | Registration, login, sessions, two-factor authentication with recovery codes, login lock, password and e-mail change, with interface · port for subscription billing | QR code for setting up two-factor authentication · See section 2 · plans and prices · data export · deleting an account and its data |
@@ -70,8 +70,8 @@ Settlement in the application, details in `docs/domain-rules/operating-costs.md`
 - A property is one settlement unit; costs cannot be split between buildings.
 - Persons per tenancy are entered for each settlement, not stored over time.
 - An area that changes within the period blocks the area key.
-- Refunds are shown on the statement but not booked or paid out.
-- A final settlement cannot be corrected or replaced.
+- A final settlement can be cancelled and made again while nothing was paid
+  on it; there is no correction statement that shows the difference.
 
 Payment reminders:
 
@@ -97,16 +97,20 @@ Rent charges and payments, details in `docs/domain-rules/rent-and-payments.md`:
 - Charges are not corrected when the rent is changed retroactively after they
   were created; a cancelled charge is never created again for the same month,
   and there is no manual charge for a single month.
-- Tenant credit cannot be applied to later charges or paid back; the payment
-  has to be reversed and recorded again.
+- Tenant credit is applied only on request ("apply credit"), oldest charges
+  first; it is not applied automatically when new charges are created.
 - Allocations of a payment are fixed when it is recorded; reallocating means
-  reversing it.
+  reversing it. A payment whose credit was paid back cannot be reversed until
+  the refund is reversed.
+- Credit and settlement refunds are booked from the bank (180000) only, not
+  in cash.
 - Expense accounts are chosen by the user; there is no suggestion from vendor,
   text or BetrKV category, and no check that category and account fit.
 - An expense has no service period; the settlement will have to decide
   whether costs count by payment date or by the period they cover.
-- Incoming money that is not rent (insurance refund, deposit) cannot be
-  booked, only ignored.
+- Other bank bookings take one account per transaction; splitting a
+  transaction over several accounts is not possible. A deposit booked to
+  355000 is not linked to the tenancy (no deposit record yet).
 - The income statement is by booking date over all accounts and does not
   apply the tax rules for Anlage V (e.g. depreciation, § 11 EStG).
 - Only one bank account (180000) in the ledger, although several bank

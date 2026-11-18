@@ -38,7 +38,7 @@ export function Documents({
               <span className="muted small">
                 {t(`documentKind.${d.kind}`)} · {formatDate(d.uploadedAt.slice(0, 10), locale)} · {size(d.sizeBytes, locale)}
               </span>
-              {d.deletable ? <ActionButton action={deleteDocument.bind(null, d.id, target.path)} label={t("action.delete")} className="link-button" /> : null}
+              {d.deletable ? <ActionButton action={deleteDocument.bind(null, d.id, target.path)} label={t("action.delete")} className="link-button" confirm={t("documents.deleteConfirm")} /> : null}
             </li>
           ))}
         </ul>

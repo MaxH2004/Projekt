@@ -3,6 +3,10 @@ import {
   bankImportSchema,
   bankTransactionBookSchema,
   bankTransactionExpenseSchema,
+  bankTransactionOtherSchema,
+  bankTransactionRefundSchema,
+  paymentReverseSchema,
+  type CreditRefund,
   bankTransactionIgnoreSchema,
   type BankImportResult,
   type BankTransactionView,
@@ -41,6 +45,22 @@ export class BankingController {
   @Post("bank-transactions/:id/book-expense")
   bookExpense(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<Expense> {
     return this.banking.bookExpense(auth.tenantId, parseId(id), parseBody(bankTransactionExpenseSchema, body));
+  }
+
+  @Post("bank-transactions/:id/book-refund")
+  bookRefund(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<CreditRefund> {
+    return this.banking.bookRefund(auth.tenantId, parseId(id), parseBody(bankTransactionRefundSchema, body));
+  }
+
+  @Post("bank-transactions/:id/book-other")
+  bookOther(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<BankTransactionView> {
+    return this.banking.bookOther(auth.tenantId, parseId(id), parseBody(bankTransactionOtherSchema, body));
+  }
+
+  @Post("bank-bookings/:id/reverse")
+  @HttpCode(204)
+  reverseOther(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<void> {
+    return this.banking.reverseOther(auth.tenantId, parseId(id), parseBody(paymentReverseSchema, body).bookingDate);
   }
 
   @Put("bank-transactions/:id/ignored")

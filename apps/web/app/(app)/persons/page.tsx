@@ -30,7 +30,7 @@ export default async function PersonsPage() {
                   <td>{personName(p)}</td>
                   <td>{p.email ?? "–"}</td>
                   <td>{p.phone ?? "–"}</td>
-                  <td className="actions">{inTenancy.has(p.id) ? null : <ActionButton action={deletePerson.bind(null, p.id)} label={t("action.delete")} />}</td>
+                  <td className="actions">{inTenancy.has(p.id) ? null : <ActionButton action={deletePerson.bind(null, p.id)} label={t("action.delete")} confirm={t("persons.deleteConfirm")} />}</td>
                 </tr>
               ))}
             </tbody>

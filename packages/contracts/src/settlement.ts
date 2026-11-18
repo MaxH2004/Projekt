@@ -109,6 +109,10 @@ export interface Settlement {
   readonly result: SettlementResult;
   /** Charge created for each tenancy that owes a balance. */
   readonly chargeIds: Readonly<Record<string, string>>;
+  /** Refund in force for each tenancy whose credit was paid out. */
+  readonly refundIds: Readonly<Record<string, string>>;
+  /** Cancelled settlements count for nothing; the period can be settled again. */
+  readonly cancelled: boolean;
 }
 
 export interface SettlementSummary {
@@ -118,4 +122,5 @@ export interface SettlementSummary {
   readonly to: string;
   readonly createdAt: string;
   readonly statementCount: number;
+  readonly cancelled: boolean;
 }

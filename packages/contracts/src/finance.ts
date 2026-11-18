@@ -65,7 +65,7 @@ export interface TenancyBalance {
   readonly paidCents: number;
   /** Charges not yet covered. */
   readonly openCents: number;
-  /** Payments not yet allocated. */
+  /** Payments not yet allocated, less what was paid back. */
   readonly creditCents: number;
 }
 
@@ -114,6 +114,10 @@ export interface BankTransactionView {
   readonly paymentId: string | null;
   /** Expense booking an outgoing transaction. */
   readonly expenseId: string | null;
+  /** Money paid back to a tenant. */
+  readonly refundId: string | null;
+  /** Booked directly to an account. */
+  readonly otherBookingId: string | null;
   /** Tenancies the transaction probably belongs to, best first. Only for open incoming transactions. */
   readonly suggestions: readonly MatchSuggestion[];
 }
@@ -221,3 +225,46 @@ export interface IncomeStatement {
     readonly resultCents: number;
   }[];
 }
+
+// --- Tenant credit ---
+
+export const applyCreditSchema = z.object({ bookingDate: isoDateSchema });
+
+export const CREDIT_REFUND_REASONS = ["overpayment", "settlement"] as const;
+export type CreditRefundReason = (typeof CREDIT_REFUND_REASONS)[number];
+
+/**
+ * Paying money back to a tenant. For an overpayment the amount is chosen; for
+ * a settlement credit it is the credit of that settlement and can be left out.
+ */
+export const creditRefundSchema = z
+  .object({
+    reason: z.enum(CREDIT_REFUND_REASONS),
+    settlementId: idSchema.nullish(),
+    amountCents: positiveCents.nullish(),
+    paidOn: isoDateSchema,
+  })
+  .refine((r) => (r.reason === "settlement") === Boolean(r.settlementId), { path: ["settlementId"] })
+  .refine((r) => r.reason === "settlement" || Boolean(r.amountCents), { path: ["amountCents"] });
+
+export const bankTransactionRefundSchema = z
+  .object({ tenancyId: idSchema, reason: z.enum(CREDIT_REFUND_REASONS), settlementId: idSchema.nullish() })
+  .refine((r) => (r.reason === "settlement") === Boolean(r.settlementId), { path: ["settlementId"] });
+
+export interface CreditRefund {
+  readonly id: string;
+  readonly tenancyId: string;
+  readonly reason: CreditRefundReason;
+  readonly settlementId: string | null;
+  readonly amountCents: number;
+  readonly paidOn: string;
+  readonly bankTransactionId: string | null;
+  readonly reversed: boolean;
+}
+
+/** Books a bank transaction to an account directly: a deposit, a refund, a private transfer. */
+export const bankTransactionOtherSchema = z.object({
+  accountCode: z.string().regex(/^\d{6}$/),
+  propertyId: idSchema.nullish(),
+  description: z.string().trim().min(1).max(500).nullish(),
+});

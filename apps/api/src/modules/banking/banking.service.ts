@@ -1,15 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import type { BankImportResult, BankTransactionView, Expense, Payment } from "@hv/contracts";
+import type { BankImportResult, BankTransactionView, CreditRefund, CreditRefundReason, Expense, Payment } from "@hv/contracts";
+import { postJournalEntry, reverseJournalEntry } from "@hv/db";
 import { CamtFormatError, parseCamt053, type CamtStatement } from "@hv/integrations";
 import type pg from "pg";
 import { ApiError } from "../../common/api-error.js";
 import { found, TenantDb } from "../../common/tenant-db.js";
-import { ExpenseService, FinanceService, type ExpenseInput } from "../finance/index.js";
+import { CreditService, ENTRY_DESCRIPTION, ExpenseService, FinanceService, NOT_FOR_OTHER_BOOKINGS, POSTING_ACCOUNTS, type ExpenseInput } from "../finance/index.js";
 import { suggestTenancies, type MatchCandidate } from "./matching.js";
 
 type TransactionRow = Omit<BankTransactionView, "amountCents" | "suggestions"> & { amountCents: string };
 
-const STATUS = `CASE WHEN p.id IS NOT NULL OR x.id IS NOT NULL THEN 'booked' WHEN t.ignored_at IS NOT NULL THEN 'ignored' ELSE 'open' END`;
+const STATUS = `CASE WHEN p.id IS NOT NULL OR x.id IS NOT NULL OR r.id IS NOT NULL OR o.id IS NOT NULL THEN 'booked' WHEN t.ignored_at IS NOT NULL THEN 'ignored' ELSE 'open' END`;
 
 @Injectable()
 export class BankingService {
@@ -17,6 +18,7 @@ export class BankingService {
     private readonly db: TenantDb,
     private readonly finance: FinanceService,
     private readonly expenses: ExpenseService,
+    private readonly credit: CreditService,
   ) {}
 
   /**
@@ -102,6 +104,64 @@ export class BankingService {
     });
   }
 
+  /** Books an outgoing transaction as money paid back to a tenant. */
+  async bookRefund(tenantId: string, id: string, input: { tenancyId: string; reason: CreditRefundReason; settlementId?: string | null }): Promise<CreditRefund> {
+    const tx = await this.db.run(tenantId, async (c) => found((await this.read(c, "t.id = $1", [id]))[0]));
+    if (tx.status !== "open" || BigInt(tx.amountCents) >= 0n) throw new ApiError("bank_transaction_not_bookable");
+    return this.credit.refund(tenantId, { ...input, amountCents: -Number(tx.amountCents), paidOn: tx.bookingDate, bankTransactionId: id });
+  }
+
+  /**
+   * Books a transaction to one account against the bank: a deposit received,
+   * an insurance refund, a private transfer. Returns the transaction.
+   */
+  bookOther(tenantId: string, id: string, input: { accountCode: string; propertyId?: string | null; description?: string | null }): Promise<BankTransactionView> {
+    return this.db.run(tenantId, async (c) => {
+      const tx = found((await this.read(c, "t.id = $1", [id]))[0]);
+      await c.query("SELECT 1 FROM bank_transaction WHERE id = $1 FOR UPDATE", [id]);
+      if (tx.status !== "open") throw new ApiError("bank_transaction_not_bookable");
+      const account = (await c.query<{ id: string }>("SELECT id FROM account WHERE code = $1 AND NOT (code = ANY($2::text[]))", [input.accountCode, NOT_FOR_OTHER_BOOKINGS])).rows[0];
+      if (!account) throw new ApiError("validation_failed", ["accountCode"]);
+      if (input.propertyId) found((await c.query("SELECT 1 FROM property WHERE id = $1", [input.propertyId])).rows[0]);
+      const bank = (await c.query<{ id: string }>("SELECT id FROM account WHERE code = $1", [POSTING_ACCOUNTS.bank])).rows[0]!.id;
+      const amount = BigInt(tx.amountCents);
+      const entryId = await postJournalEntry(c, tenantId, {
+        bookingDate: tx.bookingDate,
+        description: ENTRY_DESCRIPTION.otherBooking,
+        lines: [
+          { accountId: bank, amountCents: amount },
+          { accountId: account.id, amountCents: -amount, propertyId: input.propertyId ?? undefined },
+        ],
+      });
+      await c.query(
+        `INSERT INTO bank_booking (tenant_id, bank_transaction_id, account_id, property_id, description, journal_entry_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [tenantId, id, account.id, input.propertyId ?? null, input.description ?? null, entryId],
+      );
+      const row = found((await this.read(c, "t.id = $1", [id]))[0]);
+      return { ...row, amountCents: Number(row.amountCents), suggestions: [] };
+    });
+  }
+
+  /** Reverses a direct booking; the transaction is open again. */
+  reverseOther(tenantId: string, bookingId: string, bookingDate: string): Promise<void> {
+    return this.db.run(tenantId, async (c) => {
+      const booking = found(
+        (
+          await c.query<{ entryId: string; reversed: boolean; date: string }>(
+            `SELECT b.journal_entry_id AS "entryId", b.reversal_entry_id IS NOT NULL AS reversed, t.booking_date::text AS date
+             FROM bank_booking b JOIN bank_transaction t ON t.id = b.bank_transaction_id WHERE b.id = $1 FOR UPDATE OF b`,
+            [bookingId],
+          )
+        ).rows[0],
+      );
+      if (booking.reversed) throw new ApiError("conflict");
+      if (bookingDate < booking.date) throw new ApiError("validation_failed", ["bookingDate"]);
+      const reversal = await reverseJournalEntry(c, tenantId, booking.entryId, { bookingDate, description: ENTRY_DESCRIPTION.otherBookingReversal });
+      await c.query("UPDATE bank_booking SET reversal_entry_id = $2 WHERE id = $1", [bookingId, reversal]);
+    });
+  }
+
   setIgnored(tenantId: string, id: string, ignored: boolean): Promise<BankTransactionView> {
     return this.db.run(tenantId, async (c) => {
       const tx = found((await this.read(c, "t.id = $1", [id]))[0]);
@@ -117,11 +177,13 @@ export class BankingService {
       await c.query<TransactionRow>(
         `SELECT t.id, a.iban, t.booking_date::text AS "bookingDate", t.value_date::text AS "valueDate", t.amount_cents::text AS "amountCents",
                 t.counterparty_name AS "counterpartyName", t.counterparty_iban AS "counterpartyIban", t.remittance_info AS "remittanceInfo",
-                ${STATUS} AS status, p.id AS "paymentId", x.id AS "expenseId"
+                ${STATUS} AS status, p.id AS "paymentId", x.id AS "expenseId", r.id AS "refundId", o.id AS "otherBookingId"
          FROM bank_transaction t
          JOIN bank_account a ON a.id = t.bank_account_id
          LEFT JOIN payment p ON p.bank_transaction_id = t.id AND p.reversal_entry_id IS NULL
          LEFT JOIN expense x ON x.bank_transaction_id = t.id AND x.reversal_entry_id IS NULL
+         LEFT JOIN credit_refund r ON r.bank_transaction_id = t.id AND r.reversal_entry_id IS NULL
+         LEFT JOIN bank_booking o ON o.bank_transaction_id = t.id AND o.reversal_entry_id IS NULL
          WHERE ${where}
          ORDER BY t.booking_date, t.imported_at, t.id`,
         params,

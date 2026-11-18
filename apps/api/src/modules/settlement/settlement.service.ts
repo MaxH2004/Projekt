@@ -91,13 +91,32 @@ export class SettlementService {
     });
   }
 
+  /**
+   * Cancels a final settlement while nothing was paid on it: its balance
+   * charges are cancelled, and the period can be settled again.
+   */
+  cancel(tenantId: string, id: string): Promise<Settlement> {
+    return this.db.run(tenantId, async (c) => {
+      found((await c.query("SELECT 1 FROM settlement WHERE id = $1 FOR UPDATE", [id])).rows[0]);
+      // The database refuses a charge with money on it and a settlement with a credit paid out.
+      await c.query(
+        `UPDATE rent_charge SET cancelled_at = now()
+         WHERE id IN (SELECT charge_id FROM settlement_statement WHERE settlement_id = $1 AND charge_id IS NOT NULL) AND cancelled_at IS NULL`,
+        [id],
+      );
+      await c.query("UPDATE settlement SET cancelled_at = now() WHERE id = $1", [id]);
+      return found(await this.read(c, id));
+    });
+  }
+
   list(tenantId: string, propertyId?: string): Promise<SettlementSummary[]> {
     return this.db.run(tenantId, async (c) =>
       (
         await c.query<SettlementSummary>(
           `SELECT s.id, s.property_id AS "propertyId", lower(s.period)::text AS from, (upper(s.period) - 1)::text AS to,
                   s.created_at::text AS "createdAt",
-                  (SELECT count(*)::int FROM settlement_statement st WHERE st.settlement_id = s.id) AS "statementCount"
+                  (SELECT count(*)::int FROM settlement_statement st WHERE st.settlement_id = s.id) AS "statementCount",
+                  s.cancelled_at IS NOT NULL AS cancelled
            FROM settlement s WHERE ($1::uuid IS NULL OR s.property_id = $1)
            ORDER BY lower(s.period) DESC, s.created_at DESC`,
           [propertyId ?? null],
@@ -116,7 +135,10 @@ export class SettlementService {
         `SELECT s.id, s.property_id AS "propertyId", lower(s.period)::text AS from, (upper(s.period) - 1)::text AS to,
                 s.due_date::text AS "dueDate", s.created_at::text AS "createdAt", s.result,
                 coalesce((SELECT jsonb_object_agg(st.tenancy_id, st.charge_id) FROM settlement_statement st
-                          WHERE st.settlement_id = s.id AND st.charge_id IS NOT NULL), '{}') AS "chargeIds"
+                          WHERE st.settlement_id = s.id AND st.charge_id IS NOT NULL), '{}') AS "chargeIds",
+                coalesce((SELECT jsonb_object_agg(r.tenancy_id, r.id) FROM credit_refund r
+                          WHERE r.settlement_id = s.id AND r.reversal_entry_id IS NULL), '{}') AS "refundIds",
+                s.cancelled_at IS NOT NULL AS cancelled
          FROM settlement s WHERE s.id = $1`,
         [id],
       )

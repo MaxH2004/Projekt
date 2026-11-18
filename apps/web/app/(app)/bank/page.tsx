@@ -1,4 +1,4 @@
-import { OPERATING_COST_CATEGORY_KEYS, type Account, type BankTransactionView } from "@hv/contracts";
+import { OPERATING_COST_CATEGORY_KEYS, type Account, type BankTransactionView, type Settlement, type SettlementSummary } from "@hv/contracts";
 import { Field } from "../../../components/field";
 import { ActionButton, Form } from "../../../components/form";
 import { apiGet } from "../../../lib/api";
@@ -6,7 +6,7 @@ import { getTranslate } from "../../../lib/locale";
 import { formatDate, formatMoney } from "../../../lib/money";
 import { accountName } from "../../../lib/messages";
 import { loadPortfolio } from "../../../lib/portfolio";
-import { bookTransaction, bookTransactionAsExpense, importStatement, setTransactionIgnored } from "../../actions/finance";
+import { bookTransaction, bookTransactionAsExpense, bookTransactionAsRefund, bookTransactionOther, importStatement, setTransactionIgnored } from "../../actions/finance";
 
 export default async function BankPage() {
   const { locale, t } = await getTranslate();
@@ -14,6 +14,13 @@ export default async function BankPage() {
   const open = all.filter((tx) => tx.status === "open");
   const ignored = all.filter((tx) => tx.status === "ignored");
   const expenseAccounts = accounts.filter((a) => a.forExpenses);
+  const otherAccounts = accounts.filter((a) => !["180000", "120000"].includes(a.code));
+  // Settlement credits not paid out yet, for outgoing transactions.
+  const settlements = (await apiGet<SettlementSummary[]>("/settlements")).filter((s) => !s.cancelled);
+  const details = await Promise.all(settlements.map((s) => apiGet<Settlement>(`/settlements/${s.id}`)));
+  const settlementCredits = details.flatMap((d) =>
+    d.result.statements.filter((st) => st.balanceCents < 0 && !d.refundIds[st.tenancyId]).map((st) => ({ settlement: d, tenancyId: st.tenancyId, cents: -st.balanceCents })),
+  );
 
   return (
     <>
@@ -104,6 +111,67 @@ export default async function BankPage() {
                   </Field>
                 </Form>
               )}
+              {tx.amountCents < 0 ? (
+                <details>
+                  <summary>{t("bank.bookRefund")}</summary>
+                  <Form action={bookTransactionAsRefund.bind(null, tx.id)} submit={t("bank.bookRefund")} className="form inline">
+                    <Field label={t("bank.refundTo")} wide>
+                      <select name="refund" required defaultValue="">
+                        <option value="" disabled>
+                          {t("bank.chooseTenancy")}
+                        </option>
+                        {settlementCredits.length > 0 ? (
+                          <optgroup label={t("refundReason.settlement")}>
+                            {settlementCredits.map((c) => (
+                              <option key={`${c.settlement.id}:${c.tenancyId}`} value={`settlement:${c.settlement.id}:${c.tenancyId}`}>
+                                {portfolio.tenancyLabel(c.tenancyId)} · {formatDate(c.settlement.from, locale)} – {formatDate(c.settlement.to, locale)} ({formatMoney(c.cents, locale)})
+                              </option>
+                            ))}
+                          </optgroup>
+                        ) : null}
+                        <optgroup label={t("refundReason.overpayment")}>
+                          {portfolio.tenancies.map((tn) => (
+                            <option key={tn.id} value={`overpayment:${tn.id}`}>
+                              {portfolio.tenancyLabel(tn.id)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </Field>
+                  </Form>
+                </details>
+              ) : null}
+              <details>
+                <summary>{t("bank.bookOther")}</summary>
+                <p className="muted small">{t("bank.bookOtherHint")}</p>
+                <Form action={bookTransactionOther.bind(null, tx.id)} submit={t("bank.bookOther")} className="form inline">
+                  <Field label={t("field.account")}>
+                    <select name="accountCode" required defaultValue="">
+                      <option value="" disabled>
+                        {t("expenses.chooseAccount")}
+                      </option>
+                      {otherAccounts.map((a) => (
+                        <option key={a.code} value={a.code}>
+                          {a.code} {accountName(t, a)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={t("field.property")}>
+                    <select name="propertyId" defaultValue="">
+                      <option value="">–</option>
+                      {portfolio.properties.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={t("field.description")}>
+                    <input name="description" maxLength={500} />
+                  </Field>
+                </Form>
+              </details>
               <ActionButton action={setTransactionIgnored.bind(null, tx.id, true)} label={t("bank.ignore")} className="link-button" />
             </li>
           ))}

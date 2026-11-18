@@ -124,7 +124,7 @@ describe("preview and finalize", () => {
     ]);
     expect(await ok(anna, "GET", `/settlements/${settlement.id}`)).toEqual(settlement);
     expect(await ok(anna, "GET", `/settlements?propertyId=${property}`)).toEqual([
-      { id: settlement.id, propertyId: property, ...period, createdAt: settlement.createdAt, statementCount: 2 },
+      { id: settlement.id, propertyId: property, ...period, createdAt: settlement.createdAt, statementCount: 2, cancelled: false },
     ]);
 
     // A second settlement overlapping the period is refused.

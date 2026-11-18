@@ -1,4 +1,4 @@
-import { RENT_COMPONENT_KINDS, type DocumentInfo, type OrganizationDetails, type Payment, type RentCharge, type TenancyBalance } from "@hv/contracts";
+import { RENT_COMPONENT_KINDS, type CreditRefund, type DocumentInfo, type OrganizationDetails, type Payment, type RentCharge, type TenancyBalance } from "@hv/contracts";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Documents } from "../../../../components/documents";
@@ -8,7 +8,7 @@ import { apiGet } from "../../../../lib/api";
 import { getTranslate } from "../../../../lib/locale";
 import { formatDate, formatMonth, formatMoney, today } from "../../../../lib/money";
 import { loadPortfolio, personName } from "../../../../lib/portfolio";
-import { cancelCharge, recordPayment, reversePayment } from "../../../actions/finance";
+import { applyCredit, cancelCharge, recordPayment, refundCredit, reversePayment, reverseRefund } from "../../../actions/finance";
 import { changeRent, endTenancy } from "../../../actions/master-data";
 
 export default async function TenancyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,13 +17,15 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
   const portfolio = await loadPortfolio();
   const tenancy = portfolio.tenancy(id);
   if (!tenancy) notFound();
-  const [charges, payments, balance, details, documents] = await Promise.all([
+  const [charges, payments, balance, details, documents, refunds] = await Promise.all([
     apiGet<RentCharge[]>(`/charges?tenancyId=${id}`),
     apiGet<Payment[]>(`/payments?tenancyId=${id}`),
     apiGet<TenancyBalance>(`/tenancies/${id}/balance`),
     apiGet<OrganizationDetails>("/organization/details"),
     apiGet<DocumentInfo[]>(`/documents?tenancyId=${id}`),
+    apiGet<CreditRefund[]>(`/tenancies/${id}/refunds`),
   ]);
+  const openCharges = charges.filter((c) => !c.cancelled && c.openCents > 0);
   const day = today();
   const overdue = charges.filter((c) => !c.cancelled && c.openCents > 0 && c.dueDate < day);
   const overdueCents = overdue.reduce((sum, c) => sum + c.openCents, 0);
@@ -77,6 +79,25 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
         </dl>
       </section>
 
+      {balance.creditCents > 0 ? (
+        <section className="card callout">
+          <h2>{t("credit.title")}</h2>
+          <p>{t("credit.text", { amount: money(balance.creditCents) })}</p>
+          {balance.openCents > 0 ? <ActionButton action={applyCredit.bind(null, id)} label={t("credit.apply")} className="primary" /> : null}
+          <details>
+            <summary>{t("credit.refund")}</summary>
+            <Form action={refundCredit.bind(null, id, null)} submit={t("credit.refundSubmit")} className="form inline">
+              <Field label={t("field.amount")}>
+                <input name="amountCents" inputMode="decimal" required />
+              </Field>
+              <Field label={t("field.paidOn")}>
+                <input name="paidOn" type="date" required defaultValue={today()} />
+              </Field>
+            </Form>
+          </details>
+        </section>
+      ) : null}
+
       {overdue.length > 0 ? (
         <section className="card callout">
           <h2>{t("reminder.title")}</h2>
@@ -122,7 +143,7 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
                   <td className="num">{money(c.amountCents)}</td>
                   <td className="num">{c.cancelled ? t("charges.cancelled") : money(c.openCents)}</td>
                   <td className="actions">
-                    {!c.cancelled && c.openCents === c.amountCents ? <ActionButton action={cancelCharge.bind(null, c.id, id)} label={t("charges.cancel")} /> : null}
+                    {!c.cancelled && c.openCents === c.amountCents ? <ActionButton action={cancelCharge.bind(null, c.id, id)} label={t("charges.cancel")} confirm={t("charges.cancelConfirm")} /> : null}
                   </td>
                 </tr>
               ))}
@@ -184,7 +205,49 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
           <Field label={t("field.reference")}>
             <input name="reference" maxLength={500} />
           </Field>
+          {openCharges.length > 0 ? (
+            <fieldset className="field wide" data-field="allocations">
+              <legend className="field-label">{t("payments.chooseCharges")}</legend>
+              <div className="checks">
+                {openCharges.map((c) => (
+                  <label key={c.id} className="check">
+                    <input type="checkbox" name="chargeIds" value={c.id} /> {t(`rentComponent.${c.kind}`)} {formatMonth(c.month, locale)} ({money(c.openCents)})
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
         </Form>
+        {refunds.length > 0 ? (
+          <>
+            <h3>{t("credit.refunds")}</h3>
+            <table>
+              <tbody>
+                {refunds.map((r) => (
+                  <tr key={r.id} className={r.reversed ? "struck" : undefined}>
+                    <td>{formatDate(r.paidOn, locale)}</td>
+                    <td>{t(`refundReason.${r.reason}`)}</td>
+                    <td className="num">{money(r.amountCents)}</td>
+                    <td className="actions">
+                      {r.reversed ? (
+                        t("payments.reversed")
+                      ) : (
+                        <details>
+                          <summary>{t("payments.reverse")}</summary>
+                          <Form action={reverseRefund.bind(null, r.id, id)} submit={t("payments.reverse")} className="form compact">
+                            <Field label={t("field.bookingDate")}>
+                              <input name="bookingDate" type="date" required defaultValue={today()} />
+                            </Field>
+                          </Form>
+                        </details>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : null}
       </section>
 
       <section className="card">

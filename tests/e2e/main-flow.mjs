@@ -128,7 +128,7 @@ try {
   assert.equal(suggested, "Lindenstraße 5 · EG links · Erika Müller (Betrag passt, Name passt)");
   await submit(incoming, "Als Mietzahlung buchen");
   await page.getByText("ERIKA MUELLER").waitFor({ state: "detached" });
-  const outgoing = page.locator("li.transaction", { hasText: "Entsorgung" });
+  const outgoing = page.locator("li.transaction", { hasText: "Entsorgung" }).locator("form", { has: page.getByRole("button", { name: "Als Ausgabe buchen" }) });
   await outgoing.getByLabel("Konto", { exact: true }).selectOption("685900");
   await outgoing.getByLabel("Betriebskostenart").selectOption("street_cleaning_waste");
   await submit(outgoing, "Als Ausgabe buchen");
@@ -136,10 +136,15 @@ try {
 
   await page.goto(`${base}/expenses`);
   await page.getByLabel("Bezahlt am").fill(`${month}-10`);
-  await page.getByLabel("Betrag").fill("312,50");
+  // One invoice in two lines: 200.00 + 112.50 = 312.50, both insurance.
   await page.getByLabel("Bezahlt von").selectOption("private");
   await page.getByLabel("Konto", { exact: true }).selectOption("640000");
+  await page.getByLabel("Betrag").fill("200,00");
   await page.getByLabel("Betriebskostenart").selectOption("insurance");
+  await page.getByRole("button", { name: "Weitere Position" }).click();
+  await page.getByLabel("Konto", { exact: true }).nth(1).selectOption("640000");
+  await page.getByLabel("Betrag").nth(1).fill("112,50");
+  await page.getByLabel("Betriebskostenart").nth(1).selectOption("insurance");
   await page.getByLabel("Empfänger").fill("Versicherung Beispiel AG");
   await page.getByLabel("Beleg", { exact: true }).setInputFiles(receiptFile);
   await submit(page, "Speichern");
@@ -235,6 +240,30 @@ try {
   assert.match(reminderText, /Offener Gesamtbetrag\s+850,00 €/);
   assert.match(reminderText, new RegExp(`bis zum 15\\. Januar ${year + 1} auf das Konto DE89 3704 0044 0532 0130 00`));
   await reminder.close();
+
+  // An overpayment leaves credit, which is paid back. Cancelling asks first.
+  // 1000.00 covers the previous month (850.00) and the settlement balance (53.00): 97.00 credit.
+  await page.getByLabel("Eingang am").fill(`${month}-12`);
+  await page.getByLabel("Betrag", { exact: true }).fill("1000");
+  await submit(page, "Zahlung buchen");
+  await page.getByText("Der Mieter hat 97,00 € mehr gezahlt als gefordert.").waitFor();
+  await page.getByText("Guthaben auszahlen").click();
+  const refundForm = page.locator("details[open]", { hasText: "Guthaben auszahlen" });
+  await refundForm.getByLabel("Betrag").fill("50");
+  await submit(refundForm, "Auszahlung buchen");
+  await page.getByRole("cell", { name: "Überzahlung" }).waitFor();
+  // Deleting asks first; dismissing keeps the person.
+  await page.goto(`${base}/persons`);
+  let dialogShown = false;
+  page.once("dialog", (dialog) => {
+    dialogShown = true;
+    void dialog.dismiss();
+  });
+  await page.locator("tr", { hasText: "Max Beispiel" }).getByRole("button", { name: "Löschen" }).click();
+  await page.waitForLoadState("networkidle");
+  assert.equal(dialogShown, true);
+  await page.getByRole("cell", { name: "Max Beispiel" }).waitFor();
+  await page.goBack();
 
   // Every booking above is in the audit log, attributed to the user.
   await page.goto(`${base}/account/audit`);

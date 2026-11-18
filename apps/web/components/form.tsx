@@ -63,12 +63,21 @@ export function Form({ action, submit, children, className, success }: { action:
 }
 
 /** A button that runs a server action without fields of its own, e.g. "cancel". */
-export function ActionButton({ action, label, className }: { action: Action; label: string; className?: string }) {
+export function ActionButton({ action, label, className, confirm }: { action: Action; label: string; className?: string; confirm?: string }) {
   const [state, dispatch] = useActionState(action, {});
   const [pending, startTransition] = useTransition();
   return (
     <span className="action-button">
-      <button type="button" className={className ?? "secondary"} disabled={pending} onClick={() => startTransition(() => dispatch(new FormData()))}>
+      <button
+        type="button"
+        className={className ?? "secondary"}
+        disabled={pending}
+        onClick={() => {
+          // Irreversible or far-reaching actions ask first.
+          if (confirm && !window.confirm(confirm)) return;
+          startTransition(() => dispatch(new FormData()));
+        }}
+      >
         {label}
       </button>
       {state.error ? (

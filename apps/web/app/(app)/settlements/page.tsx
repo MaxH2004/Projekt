@@ -62,6 +62,7 @@ export default async function SettlementsPage() {
                   </td>
                   <td>
                     {formatDate(s.from, locale)} – {formatDate(s.to, locale)}
+                    {s.cancelled ? <span className="badge">{t("settlements.cancelledBadge")}</span> : null}
                   </td>
                   <td className="num">{s.statementCount}</td>
                 </tr>

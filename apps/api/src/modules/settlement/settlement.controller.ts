@@ -41,6 +41,12 @@ export class SettlementController {
     return this.settlements.finalize(auth.tenantId, parseBody(settlementFinalizeSchema, body));
   }
 
+  @Post(":id/cancel")
+  @HttpCode(200)
+  cancel(@Auth() auth: AuthContext, @Param("id") id: string): Promise<Settlement> {
+    return this.settlements.cancel(auth.tenantId, parseId(id));
+  }
+
   @Get(":id")
   get(@Auth() auth: AuthContext, @Param("id") id: string): Promise<Settlement> {
     return this.settlements.get(auth.tenantId, parseId(id));

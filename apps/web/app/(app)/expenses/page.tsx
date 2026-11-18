@@ -1,5 +1,6 @@
 import { OPERATING_COST_CATEGORY_KEYS, type Account, type DocumentInfo, type Expense } from "@hv/contracts";
 import { Documents } from "../../../components/documents";
+import { ExpenseLines } from "../../../components/expense-lines";
 import { Field } from "../../../components/field";
 import { Form } from "../../../components/form";
 import { apiGet } from "../../../lib/api";
@@ -35,46 +36,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
             <Field label={t("field.paidOn")}>
               <input name="paidOn" type="date" required defaultValue={today()} />
             </Field>
-            <Field label={t("field.amount")}>
-              <input name="amountCents" inputMode="decimal" required data-field="lines.0.amountCents" />
-            </Field>
             <Field label={t("field.paidFrom")}>
               <select name="paidFrom" defaultValue="bank">
                 <option value="bank">{t("paidFrom.bank")}</option>
                 <option value="private">{t("paidFrom.private")}</option>
-              </select>
-            </Field>
-            <Field label={t("field.account")}>
-              <select name="accountCode" required data-field="lines.0.accountCode" defaultValue="">
-                <option value="" disabled>
-                  {t("expenses.chooseAccount")}
-                </option>
-                {accounts
-                  .filter((a) => a.forExpenses)
-                  .map((a) => (
-                    <option key={a.code} value={a.code}>
-                      {a.code} {accountName(t, a)}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label={t("field.property")}>
-              <select name="propertyId" required data-field="lines.0.propertyId">
-                {portfolio.properties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label={t("field.operatingCostCategory")} hint={t("expenses.categoryHint")}>
-              <select name="operatingCostCategory" defaultValue="">
-                <option value="">{t("category.none")}</option>
-                {OPERATING_COST_CATEGORY_KEYS.map((c) => (
-                  <option key={c} value={c}>
-                    {t(`category.${c}`)}
-                  </option>
-                ))}
               </select>
             </Field>
             <Field label={t("field.vendor")}>
@@ -83,6 +48,22 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
             <Field label={t("field.description")}>
               <input name="description" maxLength={500} />
             </Field>
+            <ExpenseLines
+              accounts={accounts.filter((a) => a.forExpenses).map((a) => ({ value: a.code, label: `${a.code} ${accountName(t, a)}` }))}
+              properties={portfolio.properties.map((p) => ({ value: p.id, label: p.name }))}
+              categories={[{ value: "", label: t("category.none") }, ...OPERATING_COST_CATEGORY_KEYS.map((c) => ({ value: c, label: t(`category.${c}`) }))]}
+              labels={{
+                account: t("field.account"),
+                property: t("field.property"),
+                amount: t("field.amount"),
+                category: t("field.operatingCostCategory"),
+                chooseAccount: t("expenses.chooseAccount"),
+                add: t("expenses.addLine"),
+                remove: t("expenses.removeLine"),
+                // Filled per line in the browser.
+                line: t("expenses.line", { number: "{number}" }),
+              }}
+            />
             <Field label={t("documents.receipt")} hint={t("documents.fileHint")}>
               <input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" />
             </Field>

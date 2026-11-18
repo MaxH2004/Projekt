@@ -557,3 +557,25 @@ button.link-button {
   padding: 0.35rem 0;
   border-bottom: 1px solid var(--border);
 }
+
+.expense-lines {
+  display: grid;
+  gap: 0.75rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.expense-line {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.6rem;
+  align-items: end;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.expense-line > .muted {
+  grid-column: 1 / -1;
+}

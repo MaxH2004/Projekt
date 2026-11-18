@@ -1,5 +1,8 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from "@nestjs/common";
 import {
+  applyCreditSchema,
+  creditRefundSchema,
+  type CreditRefund,
   chargeGenerateSchema,
   monthSchema,
   paymentInputSchema,
@@ -11,12 +14,40 @@ import {
 import { ApiError, parseBody } from "../../common/api-error.js";
 import { parseId } from "../../common/tenant-db.js";
 import { Auth, SessionGuard, type AuthContext } from "../identity/index.js";
+import { CreditService } from "./credit.service.js";
 import { FinanceService } from "./finance.service.js";
 
 @Controller()
 @UseGuards(SessionGuard)
 export class FinanceController {
-  constructor(private readonly finance: FinanceService) {}
+  constructor(
+    private readonly finance: FinanceService,
+    private readonly credit: CreditService,
+  ) {}
+
+  /** Covers open charges with the tenancy's credit. */
+  @Post("tenancies/:id/apply-credit")
+  @HttpCode(200)
+  applyCredit(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<{ appliedCents: number }> {
+    return this.credit.applyCredit(auth.tenantId, parseId(id), parseBody(applyCreditSchema, body).bookingDate);
+  }
+
+  @Get("tenancies/:id/refunds")
+  refunds(@Auth() auth: AuthContext, @Param("id") id: string): Promise<CreditRefund[]> {
+    return this.credit.listRefunds(auth.tenantId, parseId(id));
+  }
+
+  /** Money paid back to the tenant from the bank, without an imported transaction. */
+  @Post("tenancies/:id/refunds")
+  refund(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<CreditRefund> {
+    return this.credit.refund(auth.tenantId, { tenancyId: parseId(id), ...parseBody(creditRefundSchema, body) });
+  }
+
+  @Post("refunds/:id/reverse")
+  @HttpCode(200)
+  reverseRefund(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: unknown): Promise<CreditRefund> {
+    return this.credit.reverseRefund(auth.tenantId, parseId(id), parseBody(paymentReverseSchema, body).bookingDate);
+  }
 
   /** Creates the missing charges of all tenancies for a month. */
   @Post("charges/generate")

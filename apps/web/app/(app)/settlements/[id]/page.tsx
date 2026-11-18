@@ -1,9 +1,12 @@
 import type { Settlement } from "@hv/contracts";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Field } from "../../../../components/field";
+import { ActionButton, Form } from "../../../../components/form";
 import { ApiFailure, apiGet } from "../../../../lib/api";
 import { getTranslate } from "../../../../lib/locale";
-import { formatDate, formatMoney } from "../../../../lib/money";
+import { formatDate, formatMoney, today } from "../../../../lib/money";
+import { cancelSettlement, refundCredit } from "../../../actions/finance";
 import { loadPortfolio } from "../../../../lib/portfolio";
 
 export default async function SettlementPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,6 +35,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
       <p className="muted">
         {t("settlements.finalizedOn", { date: formatDate(settlement.createdAt.slice(0, 10), locale) })} · {t("settlements.deadline", { date: formatDate(result.deadline, locale) })}
       </p>
+      {settlement.cancelled ? <p className="card callout">{t("settlements.cancelledHint")}</p> : null}
       <section className="card">
         <h2>{t("settlements.statements")}</h2>
         <table>
@@ -59,6 +63,20 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
                   <a href={`/settlements/${settlement.id}/statement/${s.tenancyId}`} target="_blank" rel="noopener">
                     {t("settlements.openStatement")}
                   </a>
+                  {s.balanceCents < 0 && !settlement.cancelled ? (
+                    settlement.refundIds[s.tenancyId] ? (
+                      <div className="ok small">{t("settlements.creditPaidOut")}</div>
+                    ) : (
+                      <details>
+                        <summary>{t("settlements.payOutCredit")}</summary>
+                        <Form action={refundCredit.bind(null, s.tenancyId, settlement.id)} submit={t("settlements.payOutCredit")} className="form compact">
+                          <Field label={t("field.paidOn")}>
+                            <input name="paidOn" type="date" required defaultValue={today()} />
+                          </Field>
+                        </Form>
+                      </details>
+                    )
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -73,6 +91,13 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
         </table>
         <p className="muted">{t("settlements.chargesHint", { date: formatDate(settlement.dueDate, locale) })}</p>
       </section>
+      {settlement.cancelled ? null : (
+        <section className="card">
+          <h2>{t("settlements.cancel")}</h2>
+          <p className="muted">{t("settlements.cancelHint")}</p>
+          <ActionButton action={cancelSettlement.bind(null, settlement.id)} label={t("settlements.cancel")} confirm={t("settlements.cancelConfirm")} />
+        </section>
+      )}
       <section className="card">
         <h2>{t("settlements.costs")}</h2>
         <table>

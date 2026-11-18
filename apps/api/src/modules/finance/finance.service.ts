@@ -4,6 +4,7 @@ import { generateRentCharges, postJournalEntry, reverseJournalEntry, type Journa
 import type pg from "pg";
 import { ApiError } from "../../common/api-error.js";
 import { found, TenantDb } from "../../common/tenant-db.js";
+import { CREDIT, lockTenancy } from "./credit.service.js";
 import { ENTRY_DESCRIPTION, POSTING_ACCOUNTS } from "./posting-rules.js";
 
 export interface PaymentInput {
@@ -138,19 +139,31 @@ export class FinanceService {
     return this.db.run(tenantId, async (c) => {
       const payment = found(
         (
-          await c.query<{ entryId: string; receivedOn: string; reversed: boolean }>(
-            `SELECT journal_entry_id AS "entryId", received_on::text AS "receivedOn", reversal_entry_id IS NOT NULL AS reversed
-             FROM payment WHERE id = $1 FOR UPDATE`,
+          await c.query<{ entryId: string; receivedOn: string; reversed: boolean; tenancyId: string }>(
+            `SELECT journal_entry_id AS "entryId", received_on::text AS "receivedOn", reversal_entry_id IS NOT NULL AS reversed, tenancy_id AS "tenancyId"
+             FROM payment WHERE id = $1`,
             [id],
           )
         ).rows[0],
       );
-      if (payment.reversed) throw new ApiError("conflict");
+      // Credit changes of a tenancy run one at a time.
+      await lockTenancy(c, payment.tenancyId);
+      const locked = (await c.query<{ reversed: boolean }>("SELECT reversal_entry_id IS NOT NULL AS reversed FROM payment WHERE id = $1 FOR UPDATE", [id])).rows[0]!;
+      if (locked.reversed) throw new ApiError("conflict");
       if (bookingDate < payment.receivedOn) throw new ApiError("validation_failed", ["bookingDate"]);
       // Lock the covered charges as recordPayment does, so both see the same open amounts.
       await c.query("SELECT 1 FROM rent_charge WHERE id IN (SELECT charge_id FROM payment_allocation WHERE payment_id = $1) FOR UPDATE", [id]);
+      // Credit of this payment applied later was booked separately; those entries are reversed too.
+      const applications = (
+        await c.query<{ entryId: string }>("SELECT DISTINCT journal_entry_id AS \"entryId\" FROM payment_allocation WHERE payment_id = $1 AND journal_entry_id IS NOT NULL", [id])
+      ).rows;
+      for (const a of applications) {
+        await reverseJournalEntry(c, tenantId, a.entryId, { bookingDate, description: ENTRY_DESCRIPTION.creditApplicationReversal });
+      }
       const reversalId = await reverseJournalEntry(c, tenantId, payment.entryId, { bookingDate, description: ENTRY_DESCRIPTION.paymentReversal });
       await c.query("UPDATE payment SET reversal_entry_id = $2 WHERE id = $1", [id, reversalId]);
+      // Credit already paid back must still be covered by the payments that remain.
+      if ((await lockTenancy(c, payment.tenancyId)).creditCents < 0) throw new ApiError("credit_insufficient");
       return found((await this.readPayments(c, "p.id = $1", [id]))[0]);
     });
   }
@@ -168,8 +181,7 @@ export class FinanceService {
                (SELECT coalesce(sum(c.amount_cents), 0) FROM rent_charge c WHERE c.tenancy_id = t.id AND c.cancelled_at IS NULL)::text AS "chargedCents",
                (SELECT coalesce(sum(p.amount_cents), 0) FROM payment p WHERE p.tenancy_id = t.id AND p.reversal_entry_id IS NULL)::text AS "paidCents",
                (SELECT coalesce(sum(${OPEN}), 0) FROM rent_charge c WHERE c.tenancy_id = t.id)::text AS "openCents",
-               (SELECT coalesce(sum(p.amount_cents - coalesce((SELECT sum(a.amount_cents) FROM payment_allocation a WHERE a.payment_id = p.id), 0)), 0)
-                FROM payment p WHERE p.tenancy_id = t.id AND p.reversal_entry_id IS NULL)::text AS "creditCents"
+               ${CREDIT}::text AS "creditCents"
              FROM tenancy t WHERE t.id = $1`,
             [tenancyId],
           )
