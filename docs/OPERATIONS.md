@@ -42,6 +42,8 @@ The roles:
 | `TRUST_PROXY` | API | Proxies whose `X-Forwarded-For` the API believes, e.g. `loopback` or `uniquelocal`. Rate limits are keyed by the client address it yields. |
 | `API_URL` | web | Where the web server reaches the API. The browser never talks to the API. |
 | `HOST`, `PORT` | API | Listen address. |
+| `FILE_STORAGE`, `FILE_STORAGE_DIR` | API | Uploaded files: `local` with a directory (a volume in the container), `none` to refuse uploads. `s3` is prepared but not connected. |
+| `WORKER_INTERVAL_MINUTES` | worker | How often the jobs run (default 60). |
 
 The reverse proxy in front of the web interface must set `X-Forwarded-For`;
 the web server passes it on to the API.
@@ -58,6 +60,11 @@ The database container creates the roles on first start
 `127.0.0.1:${WEB_PORT}`.
 
 ## Backups
+
+Two things need backing up: the database and the directory of uploaded files
+(`FILE_STORAGE_DIR`, in Compose the volume `files`). Files are never changed
+after upload, so copying new files incrementally is enough; a file without a
+row in `document` can be deleted, a row without a file is a loss.
 
 ```bash
 DATABASE_URL=postgres://hv_backup:...@host/hv infra/scripts/backup.sh /var/backups/hv

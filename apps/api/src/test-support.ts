@@ -36,6 +36,7 @@ export async function createTestApp(): Promise<TestApp> {
   process.env.DATABASE_URL = url;
   process.env.AUTH_SECRET_KEY = randomBytes(32).toString("base64");
   delete process.env.COOKIE_SECURE;
+  process.env.FILE_STORAGE = "fake";
 
   const admin = new pg.Client({ connectionString: url });
   await admin.connect();

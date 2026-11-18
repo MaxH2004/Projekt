@@ -18,7 +18,7 @@ packages/
     fixtures/          reviewed settlement cases as test data
   db/                  SQL migrations, tenant isolation, ledger posting
   integrations/        ports to external services: banking, email,
-                       document-extraction, subscription-billing
+                       document-extraction, subscription-billing, file-storage
   contracts/           shared types and API schemas, supported locales
   pdf-templates/       localized HTML templates for letters and settlements
   ui/                  shared interface components (not created yet)

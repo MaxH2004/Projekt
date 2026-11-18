@@ -1,9 +1,10 @@
 "use server";
 
-import type { RentCharge } from "@hv/contracts";
+import type { Expense, RentCharge } from "@hv/contracts";
 import { revalidatePath } from "next/cache";
 import { api } from "../../lib/api";
 import { fields, formAction, InvalidInput, type FormState } from "../../lib/form";
+import { sendDocument } from "./documents";
 
 export async function generateCharges(previous: FormState, data: FormData): Promise<FormState> {
   return formAction(previous, async () => {
@@ -76,7 +77,10 @@ export async function setTransactionIgnored(id: string, ignored: boolean, previo
 export async function recordExpense(previous: FormState, data: FormData): Promise<FormState> {
   return formAction(previous, async () => {
     const f = fields(data);
-    await api("POST", "/expenses", {
+    const receipt = data.get("receipt");
+    const file = receipt instanceof File && receipt.size > 0 ? receipt : null;
+    if (file && file.size > 10 * 1024 * 1024) throw new InvalidInput(["receipt"]);
+    const expense = await api<Expense>("POST", "/expenses", {
       paidOn: f.text("paidOn"),
       paidFrom: f.text("paidFrom"),
       vendor: f.optionalText("vendor"),
@@ -85,6 +89,8 @@ export async function recordExpense(previous: FormState, data: FormData): Promis
         { accountCode: f.text("accountCode"), propertyId: f.text("propertyId"), amountCents: f.money("amountCents"), operatingCostCategory: f.optionalText("operatingCostCategory") },
       ],
     });
+    // The expense is booked first; a refused receipt leaves it without one and says so.
+    if (file) await sendDocument(file, "receipt", { expenseId: expense.id });
     revalidatePath("/expenses");
   });
 }

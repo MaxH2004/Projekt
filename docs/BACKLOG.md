@@ -15,9 +15,9 @@ Last full review: 2026-11-18.
 | --- | --- | --- |
 | Master data | API and interface for properties, buildings, units, persons and tenancies with rent changes and end; API for area history, meters and readings | Interface for area history, meters and readings, editing persons and buildings · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
 | Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · interface for all of it | Bank statement import from CSV · incoming transactions other than rent (refunds, deposits, loans) · loan repayments with interest and principal · applying tenant credit to later charges · refunding credit · payment reminder by e-mail · interface: allocating a payment to chosen charges, splitting an expense over several lines or properties, confirmation before cancelling |
-| Receipts | Port for document extraction | Upload (web, app, e-mail forwarding) · file storage · extraction with user confirmation · assignment to property, cost type and allocability · invoice tables |
+| Receipts | Port for document extraction · file storage (local disk) · receipts uploaded in the web interface, attached to an expense when recording it or later, downloadable, never deletable | Upload by app or e-mail forwarding · receipts without an expense yet (inbox) · extraction with user confirmation · invoice tables |
 | Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · correcting a final settlement · paying out refunds · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
-| Documents and deadlines | Template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
+| Documents and deadlines | Documents per property and tenancy (contract, correspondence, other) with upload, download and deletion · template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
 | Tax | Chart of accounts maps to the lines of the § 21 EStG statement | Anlage V export · separate reporting under § 35a EStG |
 | Account and subscription | Registration, login, sessions, two-factor authentication with recovery codes, login lock, password and e-mail change, with interface · port for subscription billing | QR code for setting up two-factor authentication · See section 2 · plans and prices · data export · deleting an account and its data |
 
@@ -105,7 +105,6 @@ Rent charges and payments, details in `docs/domain-rules/rent-and-payments.md`:
   text or BetrKV category, and no check that category and account fit.
 - An expense has no service period; the settlement will have to decide
   whether costs count by payment date or by the period they cover.
-- Expenses cannot carry a receipt yet.
 - Incoming money that is not rent (insurance refund, deposit) cannot be
   booked, only ignored.
 - The income statement is by booking date over all accounts and does not
@@ -182,7 +181,9 @@ tests. Nothing is connected.
   sending e-mails or rendering PDFs. Charges are created automatically for the
   current month for every organization; there is no setting to switch that
   off.
-- No file storage (S3-compatible) and no PDF rendering.
+- File storage is a local directory; the S3-compatible store is a placeholder.
+  No virus scan of uploads (only PDF, JPEG, PNG and WebP are accepted, by
+  their content). No PDF rendering.
 - The end-to-end tests run in CI as a separate job, not in `pnpm verify`;
   Playwright is installed there globally, not as a dependency of the
   repository.

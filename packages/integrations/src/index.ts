@@ -42,3 +42,7 @@ export {
   FakeSubscriptionBilling,
   type SubscriptionBillingProviderKind,
 } from "./subscription-billing/providers.js";
+
+export { assertSafeKey, FileStorageNotConnectedError, type FileStorage } from "./file-storage/port.js";
+export { createFileStorage, FakeFileStorage, LocalFileStorage, ObjectStorage, type FileStorageKind } from "./file-storage/providers.js";
+export { ACCEPTED_FILE_TYPES, detectFileType, type AcceptedFileType } from "./file-storage/content-type.js";

@@ -1,4 +1,5 @@
-import type { Building, Property, Unit } from "@hv/contracts";
+import type { Building, DocumentInfo, Property, Unit } from "@hv/contracts";
+import { Documents } from "../../../../components/documents";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Field } from "../../../../components/field";
@@ -19,7 +20,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   }
   if (!property) notFound();
   const buildings = await apiGet<Building[]>(`/properties/${id}/buildings`);
-  const units = await Promise.all(buildings.map((b) => apiGet<Unit[]>(`/buildings/${b.id}/units`)));
+  const [units, documents] = await Promise.all([
+    Promise.all(buildings.map((b) => apiGet<Unit[]>(`/buildings/${b.id}/units`))),
+    apiGet<DocumentInfo[]>(`/documents?propertyId=${id}`),
+  ]);
 
   return (
     <>
@@ -82,6 +86,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             <input name="city" required maxLength={200} />
           </Field>
         </Form>
+      </section>
+      <section className="card">
+        <h2>{t("documents.title")}</h2>
+        <Documents documents={documents} target={{ propertyId: id, path: `/properties/${id}` }} kinds={["contract", "correspondence", "other"]} locale={locale} t={t} />
       </section>
       <details className="card">
         <summary>{t("properties.rename")}</summary>

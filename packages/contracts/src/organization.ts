@@ -67,3 +67,45 @@ export interface AuditEntry {
   readonly oldRow: Record<string, unknown> | null;
   readonly newRow: Record<string, unknown> | null;
 }
+
+// --- Documents ---
+
+export const DOCUMENT_KINDS = ["receipt", "contract", "correspondence", "other"] as const;
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+/** Largest file accepted for upload. */
+export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Query of an upload; the file itself is the raw request body. */
+export const documentUploadQuerySchema = z
+  .object({
+    kind: z.enum(DOCUMENT_KINDS),
+    fileName: z.string().trim().min(1).max(255),
+    propertyId: z.uuid().optional(),
+    tenancyId: z.uuid().optional(),
+    expenseId: z.uuid().optional(),
+  })
+  .refine((q) => q.propertyId || q.tenancyId || q.expenseId, { path: ["propertyId"] });
+
+export const documentListQuerySchema = z
+  .object({
+    propertyId: z.uuid().optional(),
+    tenancyId: z.uuid().optional(),
+    expenseId: z.uuid().optional(),
+    /** "true": the receipts of all expenses. */
+    receipts: z.literal("true").optional(),
+  })
+  .refine((q) => q.propertyId || q.tenancyId || q.expenseId || q.receipts, { path: ["propertyId"] });
+
+export interface DocumentInfo {
+  readonly id: string;
+  readonly kind: DocumentKind;
+  readonly fileName: string;
+  readonly contentType: string;
+  readonly sizeBytes: number;
+  readonly uploadedAt: string;
+  readonly propertyId: string | null;
+  readonly tenancyId: string | null;
+  readonly expenseId: string | null;
+  /** False for receipts of expenses, which are part of the books. */
+  readonly deletable: boolean;
+}

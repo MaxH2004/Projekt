@@ -1,5 +1,5 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { BANK_STATEMENT_MAX_LENGTH } from "@hv/contracts";
+import { BANK_STATEMENT_MAX_LENGTH, DOCUMENT_MAX_BYTES } from "@hv/contracts";
 import type { NextFunction, Request, Response } from "express";
 import { requestContextMiddleware } from "./request-context.js";
 
@@ -17,6 +17,8 @@ import { requestContextMiddleware } from "./request-context.js";
  */
 export function configureHttp(app: NestExpressApplication, env: NodeJS.ProcessEnv = process.env): void {
   app.useBodyParser("json", { limit: BANK_STATEMENT_MAX_LENGTH * 2 });
+  // Uploaded files arrive as the raw body; only the upload route reads it.
+  app.useBodyParser("raw", { type: "application/octet-stream", limit: DOCUMENT_MAX_BYTES });
   app.disable("x-powered-by");
   if (env.TRUST_PROXY) app.set("trust proxy", env.TRUST_PROXY);
   app.use(requestContextMiddleware);

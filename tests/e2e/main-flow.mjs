@@ -44,6 +44,8 @@ const statement = `<?xml version="1.0" encoding="UTF-8"?>
 const dir = await mkdtemp(join(tmpdir(), "hv-e2e-"));
 const statementFile = join(dir, "statement.xml");
 await writeFile(statementFile, statement);
+const receiptFile = join(dir, "Rechnung Versicherung.pdf");
+await writeFile(receiptFile, "%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n");
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
@@ -139,8 +141,24 @@ try {
   await page.getByLabel("Konto", { exact: true }).selectOption("640000");
   await page.getByLabel("Betriebskostenart").selectOption("insurance");
   await page.getByLabel("Empfänger").fill("Versicherung Beispiel AG");
+  await page.getByLabel("Beleg", { exact: true }).setInputFiles(receiptFile);
   await submit(page, "Speichern");
   await page.getByText("Versicherung Beispiel AG").waitFor();
+  // The receipt is attached and comes back unchanged as a download.
+  const row = page.locator("tr", { hasText: "Versicherung Beispiel AG" });
+  await row.getByText("Belege (1)").click();
+  const [download] = await Promise.all([page.waitForEvent("download"), row.getByRole("link", { name: "Rechnung Versicherung.pdf" }).click()]);
+  assert.equal(download.suggestedFilename(), "Rechnung Versicherung.pdf");
+
+  // A contract on the property page.
+  await page.goto(`${base}/properties`);
+  await page.getByRole("link", { name: "Lindenstraße 5" }).click();
+  const documents = page.locator("section", { hasText: "Dokumente" });
+  await documents.getByLabel("Datei").setInputFiles(receiptFile);
+  await documents.getByLabel("Art").selectOption("contract");
+  await submit(documents, "Hochladen");
+  await documents.getByRole("link", { name: "Rechnung Versicherung.pdf" }).waitFor();
+  assert.match(await documents.innerText(), /Vertrag/);
 
   // 850.00 rent and advance; 119.00 waste and 312.50 insurance; result 418.50.
   await page.goto(`${base}/reports?year=${year}`);

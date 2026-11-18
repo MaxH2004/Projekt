@@ -63,6 +63,22 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
 
 export const apiGet = <T>(path: string) => api<T>("GET", path);
 
+/** Sends a file as the raw body. Errors throw ApiFailure like `api`. */
+export async function apiUpload<T>(path: string, bytes: ArrayBuffer): Promise<T> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const res = await fetch(`${config.apiUrl}${path}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "content-type": "application/octet-stream", ...(token ? { cookie: `session=${token}` } : {}) },
+    body: bytes,
+  });
+  if (!res.ok) {
+    const error = await readError(res);
+    throw new ApiFailure(res.status, error.code, error.fields);
+  }
+  return (await res.json()) as T;
+}
+
 async function readError(res: Response): Promise<ErrorResponse> {
   try {
     const body = (await res.json()) as Partial<ErrorResponse>;

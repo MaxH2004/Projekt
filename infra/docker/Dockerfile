@@ -26,6 +26,11 @@ USER node
 
 FROM runtime AS api
 COPY --from=build --chown=node:node /app /app
+# Uploaded files when FILE_STORAGE=local; mount a volume here. Created as
+# root, owned by the user the API runs as, so a fresh volume is writable.
+USER root
+RUN mkdir -p /data/files && chown node:node /data/files
+USER node
 WORKDIR /app/apps/api
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT??3001)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"

@@ -81,7 +81,7 @@ jobs:
       - name: Start API and web
         run: |
           cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
-          (cd apps/api && DATABASE_URL=postgres://hv_login:ci-login@127.0.0.1:5432/hv_e2e AUTH_SECRET_KEY=$(openssl rand -base64 32) COOKIE_SECURE=false TRUST_PROXY=loopback PORT=3001 nohup node dist/main.js > ../../api.log 2>&1 &)
+          (cd apps/api && DATABASE_URL=postgres://hv_login:ci-login@127.0.0.1:5432/hv_e2e AUTH_SECRET_KEY=$(openssl rand -base64 32) COOKIE_SECURE=false TRUST_PROXY=loopback FILE_STORAGE=local FILE_STORAGE_DIR=$RUNNER_TEMP/files PORT=3001 nohup node dist/main.js > ../../api.log 2>&1 &)
           (cd apps/web && API_URL=http://127.0.0.1:3001 COOKIE_SECURE=false HOSTNAME=127.0.0.1 PORT=3000 nohup node .next/standalone/apps/web/server.js > ../../web.log 2>&1 &)
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/login > /dev/null && break; sleep 1; done
       - name: Install Playwright

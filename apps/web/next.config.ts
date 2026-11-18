@@ -21,6 +21,8 @@ const nextConfig: NextConfig = {
   // the monorepo root is traced so the workspace packages come along.
   output: "standalone",
   outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
+  // Uploads go through server actions; the API accepts files up to 10 MB.
+  experimental: { serverActions: { bodySizeLimit: "11mb" } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

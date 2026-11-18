@@ -1,6 +1,7 @@
-import { RENT_COMPONENT_KINDS, type OrganizationDetails, type Payment, type RentCharge, type TenancyBalance } from "@hv/contracts";
+import { RENT_COMPONENT_KINDS, type DocumentInfo, type OrganizationDetails, type Payment, type RentCharge, type TenancyBalance } from "@hv/contracts";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Documents } from "../../../../components/documents";
 import { Field } from "../../../../components/field";
 import { ActionButton, Form } from "../../../../components/form";
 import { apiGet } from "../../../../lib/api";
@@ -16,11 +17,12 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
   const portfolio = await loadPortfolio();
   const tenancy = portfolio.tenancy(id);
   if (!tenancy) notFound();
-  const [charges, payments, balance, details] = await Promise.all([
+  const [charges, payments, balance, details, documents] = await Promise.all([
     apiGet<RentCharge[]>(`/charges?tenancyId=${id}`),
     apiGet<Payment[]>(`/payments?tenancyId=${id}`),
     apiGet<TenancyBalance>(`/tenancies/${id}/balance`),
     apiGet<OrganizationDetails>("/organization/details"),
+    apiGet<DocumentInfo[]>(`/documents?tenancyId=${id}`),
   ]);
   const day = today();
   const overdue = charges.filter((c) => !c.cancelled && c.openCents > 0 && c.dueDate < day);
@@ -183,6 +185,11 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
             <input name="reference" maxLength={500} />
           </Field>
         </Form>
+      </section>
+
+      <section className="card">
+        <h2>{t("documents.title")}</h2>
+        <Documents documents={documents} target={{ tenancyId: id, path: `/tenancies/${id}` }} kinds={["contract", "correspondence", "other"]} locale={locale} t={t} />
       </section>
 
       <div className="columns">

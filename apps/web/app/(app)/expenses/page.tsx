@@ -1,4 +1,5 @@
-import { OPERATING_COST_CATEGORY_KEYS, type Account, type Expense } from "@hv/contracts";
+import { OPERATING_COST_CATEGORY_KEYS, type Account, type DocumentInfo, type Expense } from "@hv/contracts";
+import { Documents } from "../../../components/documents";
 import { Field } from "../../../components/field";
 import { Form } from "../../../components/form";
 import { apiGet } from "../../../lib/api";
@@ -12,10 +13,11 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const { locale, t } = await getTranslate();
   const requested = (await searchParams).year;
   const year = requested && /^\d{4}$/.test(requested) ? requested : today().slice(0, 4);
-  const [portfolio, accounts, expenses] = await Promise.all([
+  const [portfolio, accounts, expenses, receipts] = await Promise.all([
     loadPortfolio(),
     apiGet<Account[]>("/accounts"),
     apiGet<Expense[]>(`/expenses?from=${year}-01-01&to=${year}-12-31`),
+    apiGet<DocumentInfo[]>("/documents?receipts=true"),
   ]);
   const accountByCode = new Map(accounts.map((a) => [a.code, a]));
   const property = (id: string) => portfolio.properties.find((p) => p.id === id)?.name ?? "–";
@@ -81,6 +83,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
             <Field label={t("field.description")}>
               <input name="description" maxLength={500} />
             </Field>
+            <Field label={t("documents.receipt")} hint={t("documents.fileHint")}>
+              <input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" />
+            </Field>
           </Form>
         )}
       </section>
@@ -136,6 +141,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                   </td>
                   <td className="num">{formatMoney(e.amountCents, locale)}</td>
                   <td className="actions">
+                    <details className="receipts">
+                      <summary>{t("documents.receipts", { count: receipts.filter((r) => r.expenseId === e.id).length })}</summary>
+                      <Documents documents={receipts.filter((r) => r.expenseId === e.id)} target={{ expenseId: e.id, path: "/expenses" }} kinds={["receipt"]} locale={locale} t={t} />
+                    </details>
                     {e.reversed ? (
                       t("expenses.reversed")
                     ) : (

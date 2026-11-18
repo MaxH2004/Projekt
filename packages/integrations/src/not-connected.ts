@@ -4,7 +4,7 @@
  */
 export class IntegrationNotConnectedError extends Error {
   constructor(
-    readonly integration: "bank" | "email" | "document-extraction" | "subscription-billing",
+    readonly integration: "bank" | "email" | "document-extraction" | "subscription-billing" | "file-storage",
     readonly kind: string,
   ) {
     super(`Integration "${integration}" with provider "${kind}" is prepared but not connected`);

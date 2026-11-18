@@ -46,6 +46,10 @@ services:
       TRUST_PROXY: uniquelocal
       HOST: 0.0.0.0
       PORT: "3001"
+      FILE_STORAGE: local
+      FILE_STORAGE_DIR: /data/files
+    volumes:
+      - files:/data/files
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
@@ -73,3 +77,4 @@ services:
 
 volumes:
   pgdata:
+  files:
