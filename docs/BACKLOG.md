@@ -19,7 +19,7 @@ Last full review: 2026-11-18.
 | Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, credits paid out, cancellation, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
 | Documents and deadlines | Documents per property and tenancy (contract, correspondence, other) with upload, download and deletion · template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
 | Tax | Chart of accounts maps to the lines of the § 21 EStG statement | Anlage V export · separate reporting under § 35a EStG |
-| Account and subscription | Registration, login, sessions, two-factor authentication with recovery codes, login lock, password and e-mail change, with interface · port for subscription billing | QR code for setting up two-factor authentication · See section 2 · plans and prices · data export · deleting an account and its data |
+| Account and subscription | Registration, login, sessions, two-factor authentication with recovery codes, login lock, password and e-mail change, with interface · port for subscription billing | See section 2 · plans and prices · deleting an account and its data (retention duties for bookkeeping records need a decision) · importing an export |
 
 ## 2. Account and security
 
@@ -44,6 +44,9 @@ sessions deleted at login and by `deleteExpiredSessions`.
   inlines scripts and would need a nonce per request.
 - CSRF protection: `SameSite=Lax` cookies plus the origin check of Next.js
   server actions; the API itself has no CSRF token.
+- The data export reads each table with its own snapshot; changes during an
+  export can make it slightly inconsistent. Uploaded files are listed, not
+  included.
 - The audit log covers the financial tables and the organization's bank
   details, not master data such as properties, units and persons. It keeps
   every entry forever; retention and export are not decided.
@@ -80,8 +83,7 @@ Payment reminders:
   not applied (see rent charges).
 - The suggested payment date of two weeks is a convention, not a legal rule.
 - Letters are printable pages; no PDF file, no sending by e-mail or post.
-- The organization's name cannot be changed, and only one bank account can be
-  printed on letters.
+- Only one bank account can be printed on letters.
 - The statement letter has not been checked by a lawyer.
 
 Rent charges and payments, details in `docs/domain-rules/rent-and-payments.md`:
@@ -144,19 +146,19 @@ Master data:
 Ledger and chart of accounts, details in `docs/domain-rules/chart-of-accounts.md`:
 
 - Only fully deductible accounts; none for mixed use or letting with VAT.
-- Existing organizations do not get new accounts automatically when the chart
-  grows.
+- New accounts of the chart reach existing organizations through the worker
+  (chart-sync); renamed or removed accounts are not handled.
 - No fiscal years, no period closing, no opening balances.
 
 ## 4. Languages
 
 - French and Spanish texts were written by the developer and not reviewed by
   native speakers.
-- The user's stored language is not yet used for documents, e-mails or the
-  interface; the interface follows its language cookie or the browser.
-- Account names of the chart are translated in the interface catalogs; the
-  names stored in the database are English. A test that every chart account
-  has a translation is missing.
+- The user's stored language is applied at login and saved when it is
+  switched; documents use the interface language of the moment, e-mails do
+  not exist yet.
+- Account names of the chart are translated in the interface catalogs (a test
+  checks every account); the names stored in the database are English.
 - Date inputs use the browser's date picker, whose format follows the browser
   language, not the chosen interface language.
 - Statutory documents (statements, rent increases) are only meaningful in

@@ -10,13 +10,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "next": "^16.4.6",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
     "@hv/contracts": "workspace:*",
-    "@hv/pdf-templates": "workspace:*"
+    "@hv/pdf-templates": "workspace:*",
+    "next": "^16.4.6",
+    "qrcode": "1.5.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@hv/db": "workspace:*",
+    "@types/qrcode": "1.5.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0"
   }

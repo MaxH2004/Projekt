@@ -1,7 +1,7 @@
 import { migrate } from "@hv/db";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { rentChargesJob, runExclusive, sessionCleanupJob } from "./jobs.js";
+import { chartSyncJob, rentChargesJob, runExclusive, sessionCleanupJob } from "./jobs.js";
 
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test")) throw new Error("TEST_DATABASE_URL must name a database ending in _test");
@@ -77,5 +77,13 @@ describe("runExclusive", () => {
     } finally {
       other.release();
     }
+  });
+});
+
+describe("chart sync job", () => {
+  it("adds missing accounts to existing organizations and nothing else", async () => {
+    // The organization above was inserted without a chart.
+    expect(await chartSyncJob.run(pool, new Date())).toBe("38 accounts added in 1 organizations");
+    expect(await chartSyncJob.run(pool, new Date())).toBe("0 accounts added in 1 organizations");
   });
 });

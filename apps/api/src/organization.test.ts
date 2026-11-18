@@ -42,3 +42,30 @@ describe("organization details", () => {
     expect((await call(anna, "PUT", "/organization/details", { iban: "DE89370400440532013001" })).body).toEqual({ code: "validation_failed", fields: ["iban"] });
   });
 });
+
+describe("organization name, export and language", () => {
+  it("renames the organization", async () => {
+    expect((await call(anna, "PUT", "/organization/name", { name: "  Anna Sample Rentals " })).body.name).toBe("Anna Sample Rentals");
+    expect((await call(anna, "GET", "/auth/me")).body.organizationName).toBe("Anna Sample Rentals");
+    expect((await call(ben, "GET", "/auth/me")).body.organizationName).toBe("Ben");
+    expect((await call(anna, "PUT", "/organization/name", { name: " " })).body).toEqual({ code: "validation_failed", fields: ["name"] });
+  });
+
+  it("exports the organization's data, and only its own", async () => {
+    await call(anna, "POST", "/properties", { name: "Anna's house" });
+    await call(ben, "POST", "/properties", { name: "Ben's house" });
+    const res = await call(anna, "GET", "/organization/export");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ format: "hv-export", version: 1, organization: { name: "Anna Sample Rentals" } });
+    expect(res.body.tables.property.map((p: { name: string }) => p.name)).toEqual(["Anna's house"]);
+    expect(res.body.tables.account).toHaveLength(38);
+    expect(Object.keys(res.body.tables)).toContain("journal_line");
+    expect(JSON.stringify(res.body)).not.toContain("Ben's house");
+  });
+
+  it("stores the user's language", async () => {
+    expect((await api.request("POST", "/auth/locale", { cookie: anna, body: { locale: "es" } })).status).toBe(204);
+    expect((await call(anna, "GET", "/auth/me")).body.locale).toBe("es");
+    expect((await call(anna, "POST", "/auth/locale", { locale: "en" })).status).toBe(400);
+  });
+});

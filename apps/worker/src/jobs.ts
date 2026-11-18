@@ -1,4 +1,4 @@
-import { generateRentCharges, withIdentity, withTenant } from "@hv/db";
+import { generateRentCharges, seedChartOfAccounts, SKR04_RENTAL_2026, withIdentity, withTenant } from "@hv/db";
 import type { Pool } from "pg";
 
 export interface Job {
@@ -36,7 +36,23 @@ export const sessionCleanupJob: Job = {
   },
 };
 
-export const JOBS: readonly Job[] = [rentChargesJob, sessionCleanupJob];
+/**
+ * Adds accounts that were added to the chart after an organization was
+ * created. Existing accounts are left as they are.
+ */
+export const chartSyncJob: Job = {
+  name: "chart-sync",
+  async run(pool) {
+    const organizations = (await withIdentity(pool, (c) => c.query<{ id: string }>("SELECT id FROM organization ORDER BY created_at"))).rows;
+    let added = 0;
+    for (const { id } of organizations) {
+      added += (await withTenant(pool, id, (c) => seedChartOfAccounts(c, id, SKR04_RENTAL_2026))).length;
+    }
+    return `${added} accounts added in ${organizations.length} organizations`;
+  },
+};
+
+export const JOBS: readonly Job[] = [chartSyncJob, rentChargesJob, sessionCleanupJob];
 
 /** Lock key per job name, the same in every worker instance. */
 function lockKey(name: string): number {

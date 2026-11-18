@@ -15,6 +15,7 @@ export {
   emailChangeSchema,
   secondFactorConfirmSchema,
   recoveryCodeSchema,
+  localeChangeSchema,
   type RecoveryCodesResponse,
   type LoginRequest,
   type MeResponse,

@@ -109,3 +109,15 @@ export interface DocumentInfo {
   /** False for receipts of expenses, which are part of the books. */
   readonly deletable: boolean;
 }
+
+export const organizationNameSchema = z.object({ name: z.string().trim().min(1).max(200) });
+
+/** Everything an organization has stored, as one file. Amounts stay strings of cents. */
+export interface DataExport {
+  readonly format: "hv-export";
+  readonly version: 1;
+  readonly exportedAt: string;
+  readonly organization: { readonly id: string; readonly name: string };
+  /** Rows per table, as stored. Uploaded files are listed in `document`, not included. */
+  readonly tables: Readonly<Record<string, readonly Record<string, unknown>[]>>;
+}

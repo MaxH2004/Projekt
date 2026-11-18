@@ -223,6 +223,11 @@ export class IdentityService {
     }
   }
 
+  /** The language for the interface and, later, for documents and e-mails. */
+  async setLocale(auth: AuthContext, locale: MeResponse["locale"]): Promise<void> {
+    await withIdentity(this.pool, (c) => c.query("UPDATE app_user SET locale = $2 WHERE id = $1", [auth.userId, locale]));
+  }
+
   /** Deletes sessions that have expired. Returns how many. */
   async deleteExpiredSessions(): Promise<number> {
     return (await withIdentity(this.pool, (c) => c.query("DELETE FROM session WHERE expires_at <= now()"))).rowCount ?? 0;

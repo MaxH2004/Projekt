@@ -97,3 +97,10 @@ export async function saveOrganizationDetails(previous: FormState, data: FormDat
     revalidatePath("/account");
   });
 }
+
+export async function renameOrganization(previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    await api("PUT", "/organization/name", { name: fields(data).text("name") });
+    revalidatePath("/", "layout");
+  });
+}

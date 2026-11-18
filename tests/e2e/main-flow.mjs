@@ -298,6 +298,14 @@ try {
   await submit(page, "Speichern");
   await page.getByText("Der Zählerstand passt nicht zu den Ablesungen davor und danach.").waitFor();
 
+  // The export holds the organization's data.
+  await page.goto(`${base}/account`);
+  const [exportFile] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Export herunterladen" }).click()]);
+  const exported = JSON.parse(await (await import("node:fs/promises")).readFile(await exportFile.path(), "utf8"));
+  assert.equal(exported.format, "hv-export");
+  assert.deepEqual(exported.tables.property.map((p) => p.name), ["Lindenstraße 5"]);
+  assert.ok(exported.tables.journal_entry.length > 0);
+
   // Every booking above is in the audit log, attributed to the user.
   await page.goto(`${base}/account/audit`);
   await page.getByRole("cell", { name: "Ausgabe · angelegt" }).first().waitFor();

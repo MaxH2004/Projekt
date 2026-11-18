@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { adoptSession, ApiFailure, apiRequest, SESSION_COOKIE } from "../../lib/api";
 import { fields, formAction, type FormState } from "../../lib/form";
-import { getLocale } from "../../lib/locale";
+import type { MeResponse } from "@hv/contracts";
+import { getLocale, LOCALE_COOKIE } from "../../lib/locale";
 
 async function failOn(res: Response): Promise<void> {
   if (res.ok) return;
@@ -21,6 +22,12 @@ export async function login(previous: FormState, data: FormData): Promise<FormSt
     const res = await apiRequest("POST", "/auth/login", { email: f.text("email"), password: f.text("password"), ...factor });
     await failOn(res);
     await adoptSession(res);
+    // The user's stored language wins over this browser's.
+    const me = await apiRequest("GET", "/auth/me");
+    if (me.ok) {
+      const { locale } = (await me.json()) as MeResponse;
+      (await cookies()).set(LOCALE_COOKIE, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+    }
   });
   if (state.error) return state;
   redirect("/");

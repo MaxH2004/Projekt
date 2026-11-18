@@ -584,3 +584,10 @@ button.link-button {
   text-align: left;
   min-width: 260px;
 }
+
+.qr svg {
+  width: 200px;
+  height: 200px;
+  background: #fff;
+  border-radius: 6px;
+}

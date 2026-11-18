@@ -60,3 +60,5 @@ export interface RecoveryCodesResponse {
   /** Shown once; only hashes are stored. */
   readonly codes: readonly string[];
 }
+
+export const localeChangeSchema = z.object({ locale: z.enum(SUPPORTED_LOCALES) });

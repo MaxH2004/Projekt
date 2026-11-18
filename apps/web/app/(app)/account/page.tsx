@@ -1,5 +1,6 @@
 import { formatIban, PASSWORD_MIN_LENGTH, type MeResponse, type OrganizationDetails, type TotpSetupResponse } from "@hv/contracts";
 import { cookies } from "next/headers";
+import QRCode from "qrcode";
 import Link from "next/link";
 import { Field } from "../../../components/field";
 import { ActionButton, Form } from "../../../components/form";
@@ -12,6 +13,7 @@ import {
   dismissRecoveryCodes,
   enableTotp,
   regenerateRecoveryCodes,
+  renameOrganization,
   saveOrganizationDetails,
   startTotpSetup,
 } from "../../actions/account";
@@ -58,6 +60,23 @@ export default async function AccountPage() {
           </div>
         </dl>
       </section>
+      <div className="columns">
+        <section className="card">
+          <h2>{t("account.organization")}</h2>
+          <Form action={renameOrganization} submit={t("action.save")} success={t("account.renamed")}>
+            <Field label={t("field.organizationName")}>
+              <input name="name" required maxLength={200} defaultValue={me.organizationName} />
+            </Field>
+          </Form>
+        </section>
+        <section className="card">
+          <h2>{t("account.export")}</h2>
+          <p className="muted">{t("account.exportHint")}</p>
+          <a className="button" href="/account/export">
+            {t("account.exportDownload")}
+          </a>
+        </section>
+      </div>
       <section className="card">
         <h2>{t("account.details")}</h2>
         <p className="muted">{t("account.detailsHint")}</p>
@@ -127,6 +146,8 @@ export default async function AccountPage() {
         ) : setup ? (
           <>
             <p>{t("account.totpStep1")}</p>
+            {/* The QR code encodes the same otpauth URI as the key below; generated here, never by a third party. */}
+            <div className="qr" dangerouslySetInnerHTML={{ __html: await QRCode.toString(setup.uri, { type: "svg", margin: 1, width: 200 }) }} />
             <p>
               <code className="secret">{setup.secret.replace(/(.{4})/g, "$1 ").trim()}</code>
             </p>

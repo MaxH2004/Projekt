@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res, UseGuards } from "@nestjs/common";
 import {
   emailChangeSchema,
+  localeChangeSchema,
   loginRequestSchema,
   passwordChangeSchema,
   registerRequestSchema,
@@ -68,6 +69,13 @@ export class IdentityController {
   @UseGuards(SessionGuard)
   me(@Auth() auth: AuthContext): Promise<MeResponse> {
     return this.identity.me(auth);
+  }
+
+  @Post("locale")
+  @HttpCode(204)
+  @UseGuards(SessionGuard)
+  async setLocale(@Auth() auth: AuthContext, @Body() body: unknown): Promise<void> {
+    await this.identity.setLocale(auth, parseBody(localeChangeSchema, body).locale);
   }
 
   @Post("totp/setup")

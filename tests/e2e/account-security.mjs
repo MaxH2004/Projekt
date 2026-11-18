@@ -59,6 +59,7 @@ try {
   // Two-factor setup: the codes are shown once, until confirmed.
   await page.goto(`${base}/account`);
   await page.getByRole("button", { name: "Einrichten" }).click();
+  await page.locator(".qr svg").waitFor();
   const secret = (await page.locator("code.secret").first().innerText()).replace(/\s+/g, "");
   await page.getByLabel("Code aus der Authenticator-App oder Wiederherstellungscode").fill(totp(secret));
   await submit(page, "Aktivieren");
