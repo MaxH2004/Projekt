@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 /**
@@ -16,6 +17,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // A self-contained server for the container image (infra/docker/Dockerfile);
+  // the monorepo root is traced so the workspace packages come along.
+  output: "standalone",
+  outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

@@ -47,7 +47,9 @@ sessions deleted at login and by `deleteExpiredSessions`.
 - The audit log covers the financial tables and the organization's bank
   details, not master data such as properties, units and persons. It keeps
   every entry forever; retention and export are not decided.
-- No penetration test, no dependency or secret scanning in CI.
+- No penetration test and no secret scanning. CI audits dependencies:
+  production dependencies fail the build; development tools are only reported
+  (one open: picomatch in dependency-cruiser, no fix released yet).
 
 ## 3. Simplifications in what exists
 
@@ -177,15 +179,17 @@ tests. Nothing is connected.
   both must run behind one HTTPS origin, which is not set up.
 - Worker has no jobs and no queue.
 - No file storage (S3-compatible) and no PDF rendering.
-- `tests/e2e/main-flow.mjs` and `account-security.mjs` cover the main flow and account security but run by hand against
-  running servers; not in `pnpm verify` or CI, and Playwright is not a
-  dependency of the repository.
+- The end-to-end tests run in CI as a separate job, not in `pnpm verify`;
+  Playwright is installed there globally, not as a dependency of the
+  repository.
 - No OpenAPI description of the API, although ADR 0001 planned one.
-- `/health` does not check the database.
-- No container images, no deployment, no test server. STACKIT later.
-- No script that creates the database login user as a member of `hv_app` and
-  `hv_auth`; tests run as superuser.
-- No backups, no restore test, no monitoring, no error tracking.
+- Container images exist, but API, worker and migration images carry the
+  development dependencies (about 1.4 GB); the web image is small.
+- No deployment and no test server yet; STACKIT later. See docs/OPERATIONS.md.
+- Unit and API tests still run as superuser; the end-to-end job runs as
+  `hv_login`.
+- Backups are a script; scheduling them and storing them off the machine
+  belong to the server setup. No monitoring, no error tracking.
 - TypeScript is pinned to 5.9; version 7 was not tried.
 
 ## 7. Deviations from earlier decisions

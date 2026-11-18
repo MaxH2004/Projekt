@@ -27,8 +27,10 @@ docs/
   domain-rules/        rules and sources for BetrKV, HeizkostenV, CO2KostAufG
   STRUCTURE.md         this document
   BACKLOG.md           everything open, skipped or simplified
+  OPERATIONS.md        running an environment: roles, deployment, backups
 infra/
   compose.yaml         local database
+  docker/              container images and the full-stack compose file
   scripts/             check and operations scripts
 tests/e2e/             end-to-end tests through the interface
 .github/workflows/     CI
