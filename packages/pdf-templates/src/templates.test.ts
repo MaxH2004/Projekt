@@ -4,12 +4,13 @@ import { CATALOGS, createTranslator, renderTemplate, type OperatingCostStatement
 
 const data: PaymentReminderData = {
   senderName: "Max Sample",
+  senderAddress: ["Oak Road 1", "12345 Sampletown"],
   recipientAddress: ["Erika Sample", "Sample Street 1", "12345 Sampletown"],
   recipientName: "Erika Sample",
   unitLabel: "Ground floor left",
   letterDate: "2025-04-10",
   payUntil: "2025-04-24",
-  iban: "DE89 3704 0044 0532 0130 00",
+  iban: "DE89370400440532013000",
   items: [
     { dueDate: "2025-03-03", description: "Rent March", amountCents: 95_000n },
     { dueDate: "2025-04-03", description: "Rent April", amountCents: 123_456n },
@@ -77,9 +78,19 @@ describe("payment reminder", () => {
   });
 });
 
+describe("payment reminder without bank details", () => {
+  it("asks for payment without naming an account", () => {
+    const out = renderTemplate("payment-reminder", "de", { ...data, iban: null });
+    expect(out).toContain("Bitte überweisen Sie den Betrag bis zum 24. April 2025.");
+    expect(out).not.toContain("auf das Konto");
+  });
+});
+
 // Tenancy T2 of apps/api/src/modules/settlement/assemble.test.ts.
 const statement: OperatingCostStatementData = {
   senderName: "Max Sample",
+  senderAddress: [],
+  iban: null,
   recipientAddress: ["Erika <Sample>", "Linden Street 5", "12345 Sampletown"],
   recipientName: "Erika <Sample>",
   unitLabel: "Linden Street 5, B",
@@ -116,6 +127,12 @@ describe("operating cost statement", () => {
     expect(out).toContain("an 184 von 365 Tagen");
     expect(out).toContain("Bitte überweisen Sie die Nachzahlung von 116,31 € bis zum 15. Februar 2027.");
     expect(out).toContain("Heizung und Warmwasser sind nicht Teil");
+  });
+
+  it("names the account when the sender has one, and shows the sender line", () => {
+    const out = render("de", { ...statement, iban: "DE89370400440532013000", senderAddress: ["Oak Road 1", "12345 Sampletown"] });
+    expect(out).toContain("bis zum 15. Februar 2027 auf das Konto DE89 3704 0044 0532 0130 00.");
+    expect(out).toContain('<div class="sender">Max Sample · Oak Road 1 · 12345 Sampletown</div>');
   });
 
   it("escapes names and states a refund", () => {

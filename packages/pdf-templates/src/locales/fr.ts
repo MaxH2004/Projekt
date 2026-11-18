@@ -12,6 +12,8 @@ export const fr: Catalog = {
   "paymentReminder.request": "Nous vous prions de virer ce montant avant le {date} sur le compte {iban}.",
   "paymentReminder.disregard": "Si vous avez déjà effectué le paiement, veuillez ne pas tenir compte de ce courrier.",
   "paymentReminder.closing": "Cordialement",
+  "paymentReminder.requestNoIban": "Nous vous prions de régler ce montant avant le {date}.",
+  "statement.payIban": "Veuillez régler le solde de {amount} avant le {date} sur le compte {iban}.",
   "category.public_charges": "Charges publiques (taxe foncière)",
   "category.water_supply": "Approvisionnement en eau",
   "category.drainage": "Assainissement",

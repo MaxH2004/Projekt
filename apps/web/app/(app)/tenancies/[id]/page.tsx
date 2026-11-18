@@ -1,4 +1,4 @@
-import { RENT_COMPONENT_KINDS, type Payment, type RentCharge, type TenancyBalance } from "@hv/contracts";
+import { RENT_COMPONENT_KINDS, type OrganizationDetails, type Payment, type RentCharge, type TenancyBalance } from "@hv/contracts";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Field } from "../../../../components/field";
@@ -16,11 +16,17 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
   const portfolio = await loadPortfolio();
   const tenancy = portfolio.tenancy(id);
   if (!tenancy) notFound();
-  const [charges, payments, balance] = await Promise.all([
+  const [charges, payments, balance, details] = await Promise.all([
     apiGet<RentCharge[]>(`/charges?tenancyId=${id}`),
     apiGet<Payment[]>(`/payments?tenancyId=${id}`),
     apiGet<TenancyBalance>(`/tenancies/${id}/balance`),
+    apiGet<OrganizationDetails>("/organization/details"),
   ]);
+  const day = today();
+  const overdue = charges.filter((c) => !c.cancelled && c.openCents > 0 && c.dueDate < day);
+  const overdueCents = overdue.reduce((sum, c) => sum + c.openCents, 0);
+  // Two weeks is a common choice for a first reminder, not a legal deadline; the user can change it.
+  const payUntil = new Date(Date.parse(`${day}T00:00:00Z`) + 14 * 86_400_000).toISOString().slice(0, 10);
   const unit = portfolio.unit(tenancy.unitId);
   const money = (cents: number) => formatMoney(cents, locale);
   const facts: [string, string][] = [
@@ -68,6 +74,26 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
           ))}
         </dl>
       </section>
+
+      {overdue.length > 0 ? (
+        <section className="card callout">
+          <h2>{t("reminder.title")}</h2>
+          <p>{t("reminder.overdue", { count: overdue.length, amount: money(overdueCents) })}</p>
+          {details.iban ? null : (
+            <p className="muted">
+              {t("reminder.noIban")} <Link href="/account">{t("reminder.addIban")}</Link>
+            </p>
+          )}
+          <form method="get" action={`/tenancies/${id}/reminder`} target="_blank" className="form inline">
+            <Field label={t("reminder.payUntil")}>
+              <input name="payUntil" type="date" required defaultValue={payUntil} />
+            </Field>
+            <div className="form-actions">
+              <button type="submit">{t("reminder.open")}</button>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
       <section className="card">
         <h2>{t("charges.title")}</h2>

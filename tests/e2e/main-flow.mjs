@@ -21,6 +21,12 @@ const { chromium } = createRequire(import.meta.url)("playwright");
 const base = process.env.BASE_URL ?? "http://127.0.0.1:3000";
 const year = new Date().getUTCFullYear();
 const month = new Date().toISOString().slice(0, 7);
+const previousMonth = (() => {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() - 1);
+  return d.toISOString().slice(0, 7);
+})();
 
 const statement = `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt>
@@ -179,9 +185,38 @@ try {
   await page.goto(`${base}/rent`);
   await page.getByRole("cell", { name: "Nachzahlung Betriebskosten" }).waitFor();
 
+  // Bank details: a wrong check digit is refused, the right IBAN is stored.
+  await page.goto(`${base}/account`);
+  await page.getByLabel("Straße und Hausnummer").fill("Eichenweg 1");
+  await page.getByLabel("PLZ").fill("12345");
+  await page.getByLabel("Ort").fill("Musterstadt");
+  await page.getByLabel("IBAN").fill("DE89 3704 0044 0532 0130 01");
+  await submit(page, "Speichern");
+  await page.locator(".form-error").getByText("Bitte prüfen Sie die markierten Eingaben.").waitFor();
+  assert.equal(await page.getByLabel("IBAN").getAttribute("aria-invalid"), "true");
+  await page.getByLabel("IBAN").fill("DE89 3704 0044 0532 0130 00");
+  await submit(page, "Speichern");
+  await page.locator(".form-error").waitFor({ state: "detached" });
+
+  // An unpaid previous month makes a reminder possible: 700.00 + 150.00 overdue.
+  await page.goto(`${base}/rent`);
+  await page.getByLabel("Monat").fill(previousMonth);
+  await submit(page, "Forderungen erzeugen");
   await page.goto(`${base}/tenancies`);
   await page.getByRole("link", { name: /EG links · Erika Müller/ }).click();
   await page.waitForURL(/\/tenancies\/.+/);
+  await page.getByText("2 überfällige Forderungen, zusammen 850,00 €.").waitFor();
+  await page.getByLabel("Zahlen bis").fill(`${year + 1}-01-15`);
+  const [reminder] = await Promise.all([page.waitForEvent("popup"), page.getByRole("button", { name: "Erinnerung öffnen" }).click()]);
+  await reminder.waitForLoadState();
+  const reminderText = (await reminder.locator("body").innerText()).replace(/[\u00a0\u202f]/g, " ");
+  assert.match(reminderText, /Musterverwaltung · Eichenweg 1 · 12345 Musterstadt/);
+  assert.match(reminderText, /Zahlungserinnerung/);
+  assert.match(reminderText, /Nettokaltmiete/);
+  assert.match(reminderText, /Offener Gesamtbetrag\s+850,00 €/);
+  assert.match(reminderText, new RegExp(`bis zum 15\\. Januar ${year + 1} auf das Konto DE89 3704 0044 0532 0130 00`));
+  await reminder.close();
+
   await page.getByRole("combobox", { name: "Sprache" }).selectOption("fr");
   await submit(page, "Übernehmen");
   await page.getByRole("link", { name: "Aperçu" }).waitFor();

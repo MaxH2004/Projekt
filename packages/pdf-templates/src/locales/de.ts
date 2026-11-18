@@ -14,6 +14,8 @@ export const de = {
   "paymentReminder.request": "Bitte überweisen Sie den Betrag bis zum {date} auf das Konto {iban}.",
   "paymentReminder.disregard": "Sollten Sie bereits gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.",
   "paymentReminder.closing": "Mit freundlichen Grüßen",
+  "paymentReminder.requestNoIban": "Bitte überweisen Sie den Betrag bis zum {date}.",
+  "statement.payIban": "Bitte überweisen Sie die Nachzahlung von {amount} bis zum {date} auf das Konto {iban}.",
   "category.public_charges": "Laufende öffentliche Lasten (Grundsteuer)",
   "category.water_supply": "Wasserversorgung",
   "category.drainage": "Entwässerung",

@@ -28,3 +28,17 @@ export async function enableTotp(previous: FormState, data: FormData): Promise<F
     revalidatePath("/account");
   });
 }
+
+export async function saveOrganizationDetails(previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    await api("PUT", "/organization/details", {
+      street: f.optionalText("street"),
+      postalCode: f.optionalText("postalCode"),
+      city: f.optionalText("city"),
+      accountHolder: f.optionalText("accountHolder"),
+      iban: f.optionalText("iban"),
+    });
+    revalidatePath("/account");
+  });
+}

@@ -16,7 +16,8 @@ export function letterLayout(tr: Translator, title: string, body: SafeHtml): Saf
   th, td { padding: 1.5mm 2mm; border-bottom: 0.2mm solid #999; text-align: left; }
   th.amount, td.amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
   tfoot td { font-weight: bold; border-bottom: none; }
-  .address { margin-top: 20mm; min-height: 30mm; white-space: pre-line; }
+  .sender { margin-top: 15mm; font-size: 8pt; color: #444; }
+  .address { margin-top: 3mm; min-height: 30mm; white-space: pre-line; }
   .date { text-align: right; }
 </style>
 </head>
@@ -24,4 +25,9 @@ export function letterLayout(tr: Translator, title: string, body: SafeHtml): Saf
 ${body}
 </body>
 </html>`;
+}
+
+/** The sender in one small line above the recipient's address. */
+export function senderLine(name: string, address: readonly string[]): SafeHtml {
+  return html`<div class="sender">${[name, ...address].filter((part) => part.trim()).join(" · ")}</div>`;
 }

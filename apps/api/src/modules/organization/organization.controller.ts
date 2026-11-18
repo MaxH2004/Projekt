@@ -1,0 +1,21 @@
+import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
+import { organizationDetailsSchema, type OrganizationDetails } from "@hv/contracts";
+import { parseBody } from "../../common/api-error.js";
+import { Auth, SessionGuard, type AuthContext } from "../identity/index.js";
+import { OrganizationService } from "./organization.service.js";
+
+@Controller("organization")
+@UseGuards(SessionGuard)
+export class OrganizationController {
+  constructor(private readonly organization: OrganizationService) {}
+
+  @Get("details")
+  details(@Auth() auth: AuthContext): Promise<OrganizationDetails> {
+    return this.organization.details(auth.tenantId);
+  }
+
+  @Put("details")
+  save(@Auth() auth: AuthContext, @Body() body: unknown): Promise<OrganizationDetails> {
+    return this.organization.saveDetails(auth.tenantId, parseBody(organizationDetailsSchema, body));
+  }
+}

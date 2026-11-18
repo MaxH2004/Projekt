@@ -6,11 +6,12 @@ import { FinanceModule } from "./modules/finance/index.js";
 import { HealthModule } from "./modules/health/index.js";
 import { IdentityModule } from "./modules/identity/index.js";
 import { MeteringModule } from "./modules/metering/index.js";
+import { OrganizationModule } from "./modules/organization/index.js";
 import { PropertyModule } from "./modules/property/index.js";
 import { SettlementModule } from "./modules/settlement/index.js";
 import { TenancyModule } from "./modules/tenancy/index.js";
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, HealthModule, IdentityModule, PropertyModule, TenancyModule, MeteringModule, FinanceModule, BankingModule, SettlementModule],
+  imports: [ConfigModule, DatabaseModule, HealthModule, IdentityModule, PropertyModule, TenancyModule, MeteringModule, FinanceModule, BankingModule, SettlementModule, OrganizationModule],
 })
 export class AppModule {}

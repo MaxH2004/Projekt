@@ -1,16 +1,20 @@
+import { formatIban } from "@hv/contracts";
 import { html } from "../html.js";
 import type { Translator } from "../i18n.js";
-import { letterLayout } from "./layout.js";
+import { letterLayout, senderLine } from "./layout.js";
 
 export interface PaymentReminderData {
   readonly senderName: string;
+  /** Sender's postal address, one line per entry; may be empty. */
+  readonly senderAddress: readonly string[];
   /** Postal address of the recipient, one line per entry. */
   readonly recipientAddress: readonly string[];
   readonly recipientName: string;
   readonly unitLabel: string;
   readonly letterDate: string;
   readonly payUntil: string;
-  readonly iban: string;
+  /** Account to pay to, without spaces; null if the sender has none on record. */
+  readonly iban: string | null;
   readonly items: readonly { dueDate: string; description: string; amountCents: bigint }[];
 }
 
@@ -26,7 +30,8 @@ export function paymentReminder(tr: Translator, data: PaymentReminderData): stri
   return letterLayout(
     tr,
     title,
-    html`<div class="address">${data.recipientAddress.join("\n")}</div>
+    html`${senderLine(data.senderName, data.senderAddress)}
+<div class="address">${data.recipientAddress.join("\n")}</div>
 <p class="date">${tr.date(data.letterDate)}</p>
 <h1>${title}</h1>
 <p>${tr.t("paymentReminder.salutation", { name: data.recipientName })}</p>
@@ -36,7 +41,11 @@ export function paymentReminder(tr: Translator, data: PaymentReminderData): stri
 <tbody>${rows}</tbody>
 <tfoot><tr><td colspan="2">${tr.t("paymentReminder.total")}</td><td class="amount">${tr.money(total)}</td></tr></tfoot>
 </table>
-<p>${tr.t("paymentReminder.request", { date: tr.date(data.payUntil), iban: data.iban })}</p>
+<p>${
+      data.iban
+        ? tr.t("paymentReminder.request", { date: tr.date(data.payUntil), iban: formatIban(data.iban) })
+        : tr.t("paymentReminder.requestNoIban", { date: tr.date(data.payUntil) })
+    }</p>
 <p>${tr.t("paymentReminder.disregard")}</p>
 <p>${tr.t("paymentReminder.closing")}<br>${data.senderName}</p>`,
   ).value;

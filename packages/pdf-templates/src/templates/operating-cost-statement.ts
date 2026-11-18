@@ -1,10 +1,14 @@
-import type { OperatingCostCategoryKey, SettlementKey } from "@hv/contracts";
+import { formatIban, type OperatingCostCategoryKey, type SettlementKey } from "@hv/contracts";
 import { html } from "../html.js";
 import type { Translator } from "../i18n.js";
-import { letterLayout } from "./layout.js";
+import { letterLayout, senderLine } from "./layout.js";
 
 export interface OperatingCostStatementData {
   readonly senderName: string;
+  /** Sender's postal address, one line per entry; may be empty. */
+  readonly senderAddress: readonly string[];
+  /** Account for the balance, without spaces; null if the sender has none on record. */
+  readonly iban: string | null;
   /** Postal address of the recipient, one line per entry. */
   readonly recipientAddress: readonly string[];
   readonly recipientName: string;
@@ -65,7 +69,11 @@ export function operatingCostStatement(tr: Translator, data: OperatingCostStatem
   const partYear = data.days < data.periodDays;
   const balance =
     data.balanceCents > 0n
-      ? html`<p><strong>${tr.t("statement.pay", { amount: tr.money(data.balanceCents), date: tr.date(data.dueDate) })}</strong></p>`
+      ? html`<p><strong>${
+          data.iban
+            ? tr.t("statement.payIban", { amount: tr.money(data.balanceCents), date: tr.date(data.dueDate), iban: formatIban(data.iban) })
+            : tr.t("statement.pay", { amount: tr.money(data.balanceCents), date: tr.date(data.dueDate) })
+        }</strong></p>`
       : data.balanceCents < 0n
         ? html`<p><strong>${tr.t("statement.refund", { amount: tr.money(-data.balanceCents) })}</strong></p>`
         : html`<p><strong>${tr.t("statement.even")}</strong></p>`;
@@ -73,7 +81,8 @@ export function operatingCostStatement(tr: Translator, data: OperatingCostStatem
   return letterLayout(
     tr,
     title,
-    html`<div class="address">${data.recipientAddress.join("\n")}</div>
+    html`${senderLine(data.senderName, data.senderAddress)}
+<div class="address">${data.recipientAddress.join("\n")}</div>
 <p class="date">${tr.date(data.letterDate)}</p>
 <h1>${title}</h1>
 <p>${tr.t("statement.subject", { unit: data.unitLabel, from: tr.date(data.periodFrom), to: tr.date(data.periodTo) })}</p>
