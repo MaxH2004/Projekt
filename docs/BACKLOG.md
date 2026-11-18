@@ -19,22 +19,32 @@ Last full review: 2026-11-18.
 | Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · correcting a final settlement · paying out refunds · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
 | Documents and deadlines | Template system with payment reminder and operating cost statement in three languages · payment reminder for the overdue items of a tenancy as a printable page · sender and bank details of the organization on letters | Document storage per property and tenancy · templates for rental contract, rent increase, index adjustment, handover record (need a lawyer) · reminders for index adjustment, graduated steps, contract end, maintenance, smoke detectors |
 | Tax | Chart of accounts maps to the lines of the § 21 EStG statement | Anlage V export · separate reporting under § 35a EStG |
-| Account and subscription | Registration, login, sessions, two-factor authentication, login lock, with interface · port for subscription billing | QR code for setting up two-factor authentication · See section 2 · plans and prices · data export · deleting an account and its data |
+| Account and subscription | Registration, login, sessions, two-factor authentication with recovery codes, login lock, password and e-mail change, with interface · port for subscription billing | QR code for setting up two-factor authentication · See section 2 · plans and prices · data export · deleting an account and its data |
 
 ## 2. Account and security
 
-- No e-mail verification on registration.
-- No password reset, no password or e-mail change.
-- No recovery codes for two-factor authentication and no way to switch it off.
-  A user who loses the authenticator is locked out.
-- Registration reveals whether an e-mail address is already registered.
-- The login lock (5 failures, 15 minutes) lets a third party lock an account.
-  No rate limit per IP address on any route.
-- CSRF protection relies on `SameSite=Lax` alone. No security headers, no CORS
-  configuration.
+Done: password and e-mail change with the current password (a password change
+ends the other sessions), recovery codes for two-factor authentication and
+switching it off, rate limits per client address on login, registration and
+every password check, security headers on API and interface, no CORS, expired
+sessions deleted at login and by `deleteExpiredSessions`.
+
+- No e-mail verification on registration or e-mail change, and no password
+  reset: all three need outgoing e-mail (provider, see section 5).
+- Registration reveals whether an e-mail address is already registered; fixing
+  it needs the verification mail.
+- The login lock (5 failures, 15 minutes) still lets a third party lock an
+  account; the rate limit only slows this down.
+- Rate limits are counted in memory per API process; several processes or a
+  restart reset them. The client address comes from `X-Forwarded-For` only
+  when `TRUST_PROXY` is set, which the deployment must do (the web app
+  forwards the header it receives).
+- The interface's Content-Security-Policy does not restrict scripts; Next.js
+  inlines scripts and would need a nonce per request.
+- CSRF protection: `SameSite=Lax` cookies plus the origin check of Next.js
+  server actions; the API itself has no CSRF token.
 - No audit log. The plan requires one for changes to financial data from
   stage 1.
-- Sessions are never cleaned up after they expire.
 - No penetration test, no dependency or secret scanning in CI.
 
 ## 3. Simplifications in what exists
@@ -165,7 +175,7 @@ tests. Nothing is connected.
   both must run behind one HTTPS origin, which is not set up.
 - Worker has no jobs and no queue.
 - No file storage (S3-compatible) and no PDF rendering.
-- `tests/e2e/main-flow.mjs` covers the main flow but runs by hand against
+- `tests/e2e/main-flow.mjs` and `account-security.mjs` cover the main flow and account security but run by hand against
   running servers; not in `pnpm verify` or CI, and Playwright is not a
   dependency of the repository.
 - No OpenAPI description of the API, although ADR 0001 planned one.

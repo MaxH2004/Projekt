@@ -187,16 +187,17 @@ try {
 
   // Bank details: a wrong check digit is refused, the right IBAN is stored.
   await page.goto(`${base}/account`);
-  await page.getByLabel("Straße und Hausnummer").fill("Eichenweg 1");
-  await page.getByLabel("PLZ").fill("12345");
-  await page.getByLabel("Ort").fill("Musterstadt");
-  await page.getByLabel("IBAN").fill("DE89 3704 0044 0532 0130 01");
-  await submit(page, "Speichern");
-  await page.locator(".form-error").getByText("Bitte prüfen Sie die markierten Eingaben.").waitFor();
-  assert.equal(await page.getByLabel("IBAN").getAttribute("aria-invalid"), "true");
-  await page.getByLabel("IBAN").fill("DE89 3704 0044 0532 0130 00");
-  await submit(page, "Speichern");
-  await page.locator(".form-error").waitFor({ state: "detached" });
+  const details = page.locator("section", { hasText: "Absender und Bankverbindung" });
+  await details.getByLabel("Straße und Hausnummer").fill("Eichenweg 1");
+  await details.getByLabel("PLZ").fill("12345");
+  await details.getByLabel("Ort", { exact: true }).fill("Musterstadt");
+  await details.getByLabel("IBAN").fill("DE89 3704 0044 0532 0130 01");
+  await submit(details, "Speichern");
+  await details.locator(".form-error").getByText("Bitte prüfen Sie die markierten Eingaben.").waitFor();
+  assert.equal(await details.getByLabel("IBAN").getAttribute("aria-invalid"), "true");
+  await details.getByLabel("IBAN").fill("DE89 3704 0044 0532 0130 00");
+  await submit(details, "Speichern");
+  await details.locator(".form-error").waitFor({ state: "detached" });
 
   // An unpaid previous month makes a reminder possible: 700.00 + 150.00 overdue.
   await page.goto(`${base}/rent`);

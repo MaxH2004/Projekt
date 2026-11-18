@@ -1,5 +1,5 @@
 import type { ErrorCode, ErrorResponse } from "@hv/contracts";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { config } from "./config";
 
@@ -8,6 +8,9 @@ export const SESSION_COOKIE = "session";
 
 /** Holds the two-factor secret between the two setup steps; never in the URL. */
 export const TOTP_SETUP_COOKIE = "totp_setup";
+
+/** Holds freshly created recovery codes until the user confirms having noted them. */
+export const RECOVERY_CODES_COOKIE = "recovery_codes";
 
 /** An error answer of the API. */
 export class ApiFailure extends Error {
@@ -24,12 +27,16 @@ export class ApiFailure extends Error {
 /** Raw request to the API with the user's session. Never called from the browser. */
 export async function apiRequest(method: string, path: string, body?: unknown): Promise<Response> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  // The client's address as the reverse proxy reported it, so the API can
+  // rate-limit per client and not per web server (see TRUST_PROXY there).
+  const forwardedFor = (await headers()).get("x-forwarded-for");
   return fetch(`${config.apiUrl}${path}`, {
     method,
     cache: "no-store",
     headers: {
       ...(body === undefined ? {} : { "content-type": "application/json" }),
       ...(token ? { cookie: `session=${token}` } : {}),
+      ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });

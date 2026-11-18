@@ -7,6 +7,7 @@ import { migrate } from "@hv/db";
 import pg from "pg";
 import { AppModule } from "./app.module.js";
 import { configureHttp } from "./common/http.js";
+import { RateLimiter } from "./common/rate-limit.js";
 
 export interface TestApp {
   readonly app: INestApplication;
@@ -44,6 +45,9 @@ export async function createTestApp(): Promise<TestApp> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureHttp(app);
+  // Tests log in far more often than people do; rate-limit tests set their own limits.
+  const limiter = app.get(RateLimiter);
+  limiter.limits = { credentials: { max: 1_000_000, windowMs: 60_000 }, register: { max: 1_000_000, windowMs: 60_000 } };
   await app.listen(0, "127.0.0.1");
   const base = await app.getUrl();
 

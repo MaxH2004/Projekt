@@ -439,6 +439,20 @@ button.link-button {
   margin: 0;
 }
 
+.form-success {
+  color: var(--ok);
+  margin: 0;
+  grid-column: 1 / -1;
+}
+
+.codes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+
 .action-button {
   display: inline-flex;
   align-items: center;

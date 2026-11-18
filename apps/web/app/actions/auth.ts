@@ -15,8 +15,10 @@ async function failOn(res: Response): Promise<void> {
 export async function login(previous: FormState, data: FormData): Promise<FormState> {
   const state = await formAction(previous, async () => {
     const f = fields(data);
-    const totpCode = f.optionalText("totpCode");
-    const res = await apiRequest("POST", "/auth/login", { email: f.text("email"), password: f.text("password"), ...(totpCode ? { totpCode } : {}) });
+    // One field for both: six digits from the app, or a recovery code.
+    const code = f.optionalText("totpCode");
+    const factor = !code ? {} : /^\d{6}$/.test(code) ? { totpCode: code } : { recoveryCode: code };
+    const res = await apiRequest("POST", "/auth/login", { email: f.text("email"), password: f.text("password"), ...factor });
     await failOn(res);
     await adoptSession(res);
   });

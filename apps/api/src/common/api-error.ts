@@ -14,6 +14,7 @@ const STATUS: Record<ErrorCode, number> = {
   email_taken: 409,
   not_found: 404,
   conflict: 409,
+  rate_limited: 429,
   allocation_exceeds_open_amount: 409,
   bank_statement_unreadable: 400,
   bank_transaction_not_bookable: 409,

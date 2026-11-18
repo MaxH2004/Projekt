@@ -17,7 +17,7 @@ export default async function LoginPage() {
           <input name="password" type="password" autoComplete="current-password" required />
         </Field>
         <Field label={t("field.totpCode")} hint={t("login.totpHint")}>
-          <input name="totpCode" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} />
+          <input name="totpCode" autoComplete="one-time-code" maxLength={14} />
         </Field>
       </Form>
       <p className="muted">

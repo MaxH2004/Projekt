@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestApp, sessionCookie, type TestApp } from "../../test-support.js";
+import { RateLimiter } from "../../common/rate-limit.js";
 import { IdentityService } from "./identity.service.js";
 import { timeStep, totpCode } from "./totp.js";
 
@@ -121,6 +122,7 @@ describe("two-factor authentication", () => {
   let cookie: string;
   let secret: string;
   let clock: number;
+  let recoveryCodes: string[];
 
   beforeAll(async () => {
     cookie = sessionCookie(await register({ ...dora, organizationName: "Dora" }));
@@ -151,7 +153,10 @@ describe("two-factor authentication", () => {
 
   it("is required at login once enabled", async () => {
     const enable = await api.request("POST", "/auth/totp/enable", { cookie, body: { code: totpCode(secret, timeStep(clock)) } });
-    expect(enable.status).toBe(204);
+    expect(enable.status).toBe(200);
+    recoveryCodes = ((await enable.json()) as { codes: string[] }).codes;
+    expect(recoveryCodes).toHaveLength(10);
+    for (const c of recoveryCodes) expect(c).toMatch(/^[A-Z2-7]{4}-[A-Z2-7]{4}-[A-Z2-7]{4}$/);
     expect((await (await api.request("GET", "/auth/me", { cookie })).json()).totpEnabled).toBe(true);
 
     const withoutCode = await login(dora);
@@ -170,5 +175,103 @@ describe("two-factor authentication", () => {
 
   it("cannot be set up again once enabled", async () => {
     expect(await code(await api.request("POST", "/auth/totp/setup", { cookie }))).toBe("totp_already_enabled");
+  });
+
+  it("accepts each recovery code once, in any case and without dashes", async () => {
+    const [first, second] = recoveryCodes;
+    const [stored] = await api.sql<{ code_hash: Buffer }>("SELECT code_hash FROM recovery_code LIMIT 1");
+    expect(stored!.code_hash).toHaveLength(32);
+    expect((await login({ ...dora, recoveryCode: first!.toLowerCase().replace(/-/g, "") })).status).toBe(204);
+    expect(await code(await login({ ...dora, recoveryCode: first }))).toBe("invalid_totp");
+    expect((await login({ ...dora, recoveryCode: second })).status).toBe(204);
+  });
+
+  it("replaces recovery codes only with password and second factor", async () => {
+    clock += 30_000;
+    const wrongPassword = await api.request("POST", "/auth/totp/recovery-codes", { cookie, body: { password: "wrong password 123", totpCode: totpCode(secret, timeStep(clock)) } });
+    expect(await code(wrongPassword)).toBe("invalid_credentials");
+    const res = await api.request("POST", "/auth/totp/recovery-codes", { cookie, body: { password, totpCode: totpCode(secret, timeStep(clock)) } });
+    expect(res.status).toBe(200);
+    const fresh = ((await res.json()) as { codes: string[] }).codes;
+    // Old codes no longer work, new ones do.
+    expect(await code(await login({ ...dora, recoveryCode: recoveryCodes[2] }))).toBe("invalid_totp");
+    expect((await login({ ...dora, recoveryCode: fresh[0] })).status).toBe(204);
+    recoveryCodes = fresh;
+  });
+
+  it("is switched off with password and a recovery code", async () => {
+    const both = await api.request("POST", "/auth/totp/disable", { cookie, body: { password } });
+    expect(await code(both)).toBe("validation_failed");
+    const res = await api.request("POST", "/auth/totp/disable", { cookie, body: { password, recoveryCode: recoveryCodes[1] } });
+    expect(res.status).toBe(204);
+    expect((await login(dora)).status).toBe(204);
+    expect(await api.sql("SELECT 1 FROM recovery_code")).toHaveLength(0);
+    const [user] = await api.sql<{ totp_secret: string | null }>("SELECT totp_secret FROM app_user WHERE email = 'dora@example.com'");
+    expect(user!.totp_secret).toBeNull();
+  });
+});
+
+describe("changing password and e-mail", () => {
+  const emma = { email: "emma@example.com", password };
+
+  it("changes the password with the current one and ends the other sessions", async () => {
+    const current = sessionCookie(await register({ ...emma, organizationName: "Emma" }));
+    const other = sessionCookie(await login(emma));
+    const wrong = await api.request("POST", "/auth/password", { cookie: current, body: { currentPassword: "wrong password 123", newPassword: "another long password" } });
+    expect([wrong.status, await code(wrong)]).toEqual([401, "invalid_credentials"]);
+    const short = await api.request("POST", "/auth/password", { cookie: current, body: { currentPassword: password, newPassword: "short" } });
+    expect(await short.json()).toEqual({ code: "validation_failed", fields: ["newPassword"] });
+
+    const ok = await api.request("POST", "/auth/password", { cookie: current, body: { currentPassword: password, newPassword: "another long password" } });
+    expect(ok.status).toBe(204);
+    expect((await api.request("GET", "/auth/me", { cookie: current })).status).toBe(200);
+    expect((await api.request("GET", "/auth/me", { cookie: other })).status).toBe(401);
+    expect((await login(emma)).status).toBe(401);
+    expect((await login({ ...emma, password: "another long password" })).status).toBe(204);
+  });
+
+  it("changes the e-mail with the password, but not to one that is taken", async () => {
+    const cookie = sessionCookie(await login({ ...emma, password: "another long password" }));
+    const taken = await api.request("POST", "/auth/email", { cookie, body: { password: "another long password", email: "anna@example.com" } });
+    expect([taken.status, await code(taken)]).toEqual([409, "email_taken"]);
+    const ok = await api.request("POST", "/auth/email", { cookie, body: { password: "another long password", email: " Emma.New@Example.com " } });
+    expect(ok.status).toBe(204);
+    expect((await (await api.request("GET", "/auth/me", { cookie })).json()).email).toBe("emma.new@example.com");
+  });
+});
+
+describe("protection", () => {
+  it("limits attempts per client address", async () => {
+    const limiter = api.app.get(RateLimiter);
+    const saved = limiter.limits;
+    // Start past every window the earlier tests opened.
+    let clock = Date.now() + 3_600_000;
+    limiter.now = () => clock;
+    limiter.limits = { ...saved, credentials: { max: 3, windowMs: 60_000 } };
+    try {
+      for (let i = 0; i < 3; i++) expect((await login({ email: "nobody@example.com", password })).status).toBe(401);
+      const blocked = await login(anna);
+      expect([blocked.status, await code(blocked)]).toEqual([429, "rate_limited"]);
+      clock += 60_000;
+      expect((await login(anna)).status).toBe(204);
+    } finally {
+      limiter.limits = saved;
+      limiter.now = Date.now;
+    }
+  });
+
+  it("sends security headers and no CORS headers", async () => {
+    const res = await api.request("GET", "/health");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("x-frame-options")).toBe("DENY");
+    expect(res.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("x-powered-by")).toBeNull();
+  });
+
+  it("deletes expired sessions", async () => {
+    await api.sql("UPDATE session SET expires_at = now() - interval '1 second' WHERE user_id = (SELECT id FROM app_user WHERE email = 'anna@example.com')");
+    expect(await api.app.get(IdentityService).deleteExpiredSessions()).toBeGreaterThan(0);
+    expect(await api.sql("SELECT 1 FROM session WHERE expires_at <= now()")).toHaveLength(0);
   });
 });

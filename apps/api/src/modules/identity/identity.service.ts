@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
-import type { ErrorCode, LoginRequest, MeResponse, RegisterRequest, TotpSetupResponse } from "@hv/contracts";
+import type { ErrorCode, LoginRequest, MeResponse, RecoveryCodesResponse, RegisterRequest, TotpSetupResponse } from "@hv/contracts";
 import { enterTenant, seedChartOfAccounts, SKR04_RENTAL_2026, withIdentity } from "@hv/db";
 import type pg from "pg";
 import { ApiError } from "../../common/api-error.js";
@@ -8,7 +8,7 @@ import { APP_CONFIG, type AppConfig } from "../../common/config.js";
 import { PG_POOL } from "../../common/tokens.js";
 import { DUMMY_HASH, hashPassword, verifyPassword } from "./password.js";
 import { SecretBox } from "./secret-box.js";
-import { generateTotpSecret, otpauthUri, verifyTotp } from "./totp.js";
+import { base32Encode, generateTotpSecret, otpauthUri, verifyTotp } from "./totp.js";
 
 /** Who is making the request. Set by SessionGuard. */
 export interface AuthContext {
@@ -26,6 +26,16 @@ const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
 
 const hashToken = (token: string): Buffer => createHash("sha256").update(token).digest();
+const RECOVERY_CODE_COUNT = 10;
+
+/** 60 random bits as twelve base32 characters, printed as XXXX-XXXX-XXXX. */
+function newRecoveryCode(): string {
+  return base32Encode(randomBytes(8)).slice(0, 12);
+}
+export const formatRecoveryCode = (code: string) => `${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 12)}`;
+
+/** The second factor a user gives: a code from the app or a recovery code. */
+export type SecondFactor = { totpCode?: string; recoveryCode?: string };
 
 @Injectable()
 export class IdentityService {
@@ -97,17 +107,15 @@ export class IdentityService {
       }
 
       if (user.totp_enabled_at && user.totp_secret) {
-        if (!input.totpCode) return "totp_required";
-        const lastStep = user.totp_last_step === null ? null : Number(user.totp_last_step);
-        const step = verifyTotp(this.box.open(user.totp_secret), input.totpCode, this.now(), lastStep);
-        if (step === null) {
+        if (!input.totpCode && !input.recoveryCode) return "totp_required";
+        if (!(await this.checkSecondFactor(c, user, input))) {
           await this.recordFailure(c, user.id);
           return "invalid_totp";
         }
-        await c.query("UPDATE app_user SET totp_last_step = $2 WHERE id = $1", [user.id, step]);
       }
 
       await c.query("UPDATE app_user SET failed_logins = 0, locked_until = NULL WHERE id = $1", [user.id]);
+      await c.query("DELETE FROM session WHERE user_id = $1 AND expires_at <= now()", [user.id]);
       const membership = (
         await c.query<{ tenant_id: string }>("SELECT tenant_id FROM membership WHERE user_id = $1 ORDER BY created_at LIMIT 1", [user.id])
       ).rows[0];
@@ -166,17 +174,116 @@ export class IdentityService {
     return { secret, uri: otpauthUri(secret, email, this.config.totpIssuer) };
   }
 
-  async enableTotp(auth: AuthContext, code: string): Promise<void> {
-    const error = await withIdentity(this.pool, async (c): Promise<ErrorCode | null> => {
+  /** Turns two-factor authentication on and returns the recovery codes, shown once. */
+  async enableTotp(auth: AuthContext, code: string): Promise<RecoveryCodesResponse> {
+    const result = await withIdentity(this.pool, async (c): Promise<ErrorCode | RecoveryCodesResponse> => {
       const user = (await c.query<{ totp_secret: string | null; enabled: boolean }>("SELECT totp_secret, totp_enabled_at IS NOT NULL AS enabled FROM app_user WHERE id = $1 FOR UPDATE", [auth.userId])).rows[0]!;
       if (user.enabled) return "totp_already_enabled";
       if (!user.totp_secret) return "totp_not_set_up";
       const step = verifyTotp(this.box.open(user.totp_secret), code, this.now(), null);
       if (step === null) return "invalid_totp";
       await c.query("UPDATE app_user SET totp_enabled_at = now(), totp_last_step = $2 WHERE id = $1", [auth.userId, step]);
-      return null;
+      return { codes: await this.replaceRecoveryCodes(c, auth.userId) };
     });
-    if (error) throw new ApiError(error);
+    if (typeof result === "string") throw new ApiError(result);
+    return result;
+  }
+
+  /** New recovery codes; the old ones stop working. Needs the password and a second factor. */
+  async regenerateRecoveryCodes(auth: AuthContext, password: string, factor: SecondFactor): Promise<RecoveryCodesResponse> {
+    return this.confirmed(auth, password, factor, true, async (c) => ({ codes: await this.replaceRecoveryCodes(c, auth.userId) }));
+  }
+
+  /** Turns two-factor authentication off. Needs the password and a second factor. */
+  async disableTotp(auth: AuthContext, password: string, factor: SecondFactor): Promise<void> {
+    await this.confirmed(auth, password, factor, true, async (c) => {
+      await c.query("UPDATE app_user SET totp_enabled_at = NULL, totp_secret = NULL, totp_last_step = NULL WHERE id = $1", [auth.userId]);
+      await c.query("DELETE FROM recovery_code WHERE user_id = $1", [auth.userId]);
+    });
+  }
+
+  /** Sets a new password and ends every other session of the user. */
+  async changePassword(auth: AuthContext, currentToken: string, currentPassword: string, newPassword: string): Promise<void> {
+    const hash = await hashPassword(newPassword);
+    await this.confirmed(auth, currentPassword, {}, false, async (c) => {
+      await c.query("UPDATE app_user SET password_hash = $2 WHERE id = $1", [auth.userId, hash]);
+      await c.query("DELETE FROM session WHERE user_id = $1 AND token_hash <> $2", [auth.userId, hashToken(currentToken)]);
+    });
+  }
+
+  /** Changes the login e-mail. Not verified by a mail yet, see docs/BACKLOG.md. */
+  async changeEmail(auth: AuthContext, password: string, email: string): Promise<void> {
+    try {
+      await this.confirmed(auth, password, {}, false, async (c) => {
+        await c.query("UPDATE app_user SET email = $2 WHERE id = $1", [auth.userId, email]);
+      });
+    } catch (err) {
+      if (isUniqueViolation(err, "app_user_email_key")) throw new ApiError("email_taken");
+      throw err;
+    }
+  }
+
+  /** Deletes sessions that have expired. Returns how many. */
+  async deleteExpiredSessions(): Promise<number> {
+    return (await withIdentity(this.pool, (c) => c.query("DELETE FROM session WHERE expires_at <= now()"))).rowCount ?? 0;
+  }
+
+  /**
+   * Runs `fn` after checking the password and, if `needsSecondFactor` and
+   * two-factor authentication is on, a code. Wrong answers count as failed
+   * logins, so these checks cannot be used to guess the password.
+   */
+  private async confirmed<T>(auth: AuthContext, password: string, factor: SecondFactor, needsSecondFactor: boolean, fn: (c: pg.PoolClient) => Promise<T>): Promise<T> {
+    const outcome = await withIdentity(this.pool, async (c): Promise<{ ok: T } | ErrorCode> => {
+      const user = (
+        await c.query<{ id: string; password_hash: string; totp_secret: string | null; totp_enabled_at: Date | null; totp_last_step: string | null; locked: boolean }>(
+          `SELECT id, password_hash, totp_secret, totp_enabled_at, totp_last_step, coalesce(locked_until > now(), false) AS locked
+           FROM app_user WHERE id = $1 FOR UPDATE`,
+          [auth.userId],
+        )
+      ).rows[0]!;
+      if (user.locked) return "account_locked";
+      if (!(await verifyPassword(password, user.password_hash))) {
+        await this.recordFailure(c, user.id);
+        return "invalid_credentials";
+      }
+      if (needsSecondFactor) {
+        if (!user.totp_enabled_at) return "totp_not_set_up";
+        if (!(await this.checkSecondFactor(c, user, factor))) {
+          await this.recordFailure(c, user.id);
+          return "invalid_totp";
+        }
+      }
+      return { ok: await fn(c) };
+    });
+    if (typeof outcome === "string") throw new ApiError(outcome);
+    return outcome.ok;
+  }
+
+  /** True for a fresh TOTP code (then remembered) or an unused recovery code (then spent). */
+  private async checkSecondFactor(c: pg.PoolClient, user: { id: string; totp_secret: string | null; totp_last_step: string | null }, factor: SecondFactor): Promise<boolean> {
+    if (factor.totpCode && user.totp_secret) {
+      const lastStep = user.totp_last_step === null ? null : Number(user.totp_last_step);
+      const step = verifyTotp(this.box.open(user.totp_secret), factor.totpCode, this.now(), lastStep);
+      if (step === null) return false;
+      await c.query("UPDATE app_user SET totp_last_step = $2 WHERE id = $1", [user.id, step]);
+      return true;
+    }
+    if (factor.recoveryCode) {
+      const used = await c.query("UPDATE recovery_code SET used_at = now() WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL", [
+        user.id,
+        hashToken(factor.recoveryCode),
+      ]);
+      return used.rowCount === 1;
+    }
+    return false;
+  }
+
+  private async replaceRecoveryCodes(c: pg.PoolClient, userId: string): Promise<string[]> {
+    await c.query("DELETE FROM recovery_code WHERE user_id = $1", [userId]);
+    const codes = Array.from({ length: RECOVERY_CODE_COUNT }, newRecoveryCode);
+    for (const code of codes) await c.query("INSERT INTO recovery_code (user_id, code_hash) VALUES ($1, $2)", [userId, hashToken(code)]);
+    return codes.map(formatRecoveryCode);
   }
 
   private async createSession(c: pg.PoolClient, userId: string, tenantId: string): Promise<NewSession> {

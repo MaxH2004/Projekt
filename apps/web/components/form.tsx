@@ -10,7 +10,7 @@ type Action = (previous: FormState, data: FormData) => Promise<FormState>;
  * the action reports an error, and fields named in the error are marked.
  * The form clears itself after a success unless the action navigates away.
  */
-export function Form({ action, submit, children, className }: { action: Action; submit: string; children: ReactNode; className?: string }) {
+export function Form({ action, submit, children, className, success }: { action: Action; submit: string; children: ReactNode; className?: string; success?: string }) {
   const [state, dispatch] = useActionState(action, {});
   const [pending, startTransition] = useTransition();
   const ref = useRef<HTMLFormElement>(null);
@@ -46,6 +46,11 @@ export function Form({ action, submit, children, className }: { action: Action; 
       {state.error ? (
         <p className="form-error" role="alert">
           {state.error.message}
+        </p>
+      ) : null}
+      {success && state.done && !state.error ? (
+        <p className="form-success" role="status">
+          {success}
         </p>
       ) : null}
       <div className="form-actions">

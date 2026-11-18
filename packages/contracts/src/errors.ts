@@ -14,6 +14,7 @@ export const ERROR_CODES = [
   "email_taken",
   "not_found",
   "conflict",
+  "rate_limited",
   "allocation_exceeds_open_amount",
   "bank_statement_unreadable",
   "bank_transaction_not_bookable",
