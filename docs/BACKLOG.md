@@ -13,7 +13,7 @@ Last full review: 2026-11-18.
 
 | Area | Done | Open |
 | --- | --- | --- |
-| Master data | API and interface for properties, buildings, units, persons and tenancies with rent changes and end; API for area history, meters and readings | Interface for area history, meters and readings, editing persons and buildings · deposit (amount, where it is held, interest) · logic for graduated and indexed rent (only the type is stored) · number of persons per tenancy over time · rooms per unit · co-ownership shares · owner as an entity · meter replacement |
+| Master data | API and interface for properties, buildings, units with area history, persons, tenancies with rent changes, end and deletion, deposit (amount, where held), occupants over time, meters with plausible readings | Interest on deposits · logic for graduated and indexed rent (only the type is stored) · rooms per unit · co-ownership shares · owner as an entity · meter replacement as one meter (now a new meter) |
 | Finance | Ledger with immutable balanced entries and reversal · chart of accounts · API for monthly rent charges, payments with allocation to charges, reversal, open items and balance per tenancy, with posting rules for rent payments · bank statement import (camt.053) with suggested tenancies and booking as payment · expenses split over accounts and properties with BetrKV category, from the bank or private money, booking outgoing transactions · income and expenses per property · tenant credit applied to later charges and paid back · settlement credits paid out · other bank bookings to any account (deposit, refund, private transfer) · interface for all of it, with expenses split over lines and payments assigned to chosen charges | Bank statement import from CSV · loan repayments split into interest and principal (no loan accounts in the chart yet) · payment reminder by e-mail |
 | Receipts | Port for document extraction · file storage (local disk) · receipts uploaded in the web interface, attached to an expense when recording it or later, downloadable, never deletable | Upload by app or e-mail forwarding · receipts without an expense yet (inbox) · extraction with user confirmation · invoice tables |
 | Settlements | Engine core for operating costs with three hand-calculated cases · settlement per property from expenses, tenancies and paid advances, with preview, final storage with rule set, balance charges, credits paid out, cancellation, interface and statement as a printable page | Heating cost settlement (HeizkostenV) · CO2 cost split (CO2KostAufG) · consumption key from meter readings · statement as a real PDF file (printed from the browser now) · sending · the simplifications in section 3 |
@@ -68,7 +68,6 @@ Settlement in the application, details in `docs/domain-rules/operating-costs.md`
 - Costs count by payment date; expenses have no service period.
 - Heating and hot water costs and advances are left out of the settlement.
 - A property is one settlement unit; costs cannot be split between buildings.
-- Persons per tenancy are entered for each settlement, not stored over time.
 - An area that changes within the period blocks the area key.
 - A final settlement can be cancelled and made again while nothing was paid
   on it; there is no correction statement that shows the difference.
@@ -133,12 +132,14 @@ Bank import:
 
 Master data:
 
-- Rent components can be dated after the end of a tenancy; nothing trims them.
-  Charges ignore the days after the end.
-- A tenancy and its rent history cannot be corrected or deleted through the
-  API, only ended.
-- Meter readings are not checked for plausibility (a lower reading than the
-  previous one is accepted).
+- A tenancy can be deleted only while nothing refers to it; its start date
+  and parties cannot be corrected afterwards.
+- Ending a tenancy removes rent and occupant values after the end; ending it
+  later again does not bring them back.
+- Meter readings must lie between the neighbouring readings; a meter that
+  rolls over or is replaced is entered as a new meter.
+- Persons per tenancy for a settlement are prefilled from the occupants at
+  the start of the period; changes within the period are not weighted.
 
 Ledger and chart of accounts, details in `docs/domain-rules/chart-of-accounts.md`:
 

@@ -106,13 +106,62 @@ export class TenancyService {
     return this.db.run(tenantId, (c) => (unitId ? this.read(c, "t.unit_id = $2", [on, unitId]) : this.read(c, "true", [on])));
   }
 
-  /** Sets the last day of the tenancy. */
+  /**
+   * Sets the last day of the tenancy. Rent and occupant values after that day
+   * are removed or cut off, so nothing remains dated beyond the tenancy.
+   */
   endTenancy(tenantId: string, id: string, endDate: string): Promise<Tenancy> {
     return this.db.run(tenantId, async (c) => {
       const row = found((await c.query<{ before_start: boolean }>("SELECT $2::date < lower(term) AS before_start FROM tenancy WHERE id = $1 FOR UPDATE", [id, endDate])).rows[0]);
       if (row.before_start) throw new ApiError("validation_failed", ["endDate"]);
       await c.query("UPDATE tenancy SET term = daterange(lower(term), $2::date + 1) WHERE id = $1", [id, endDate]);
+      for (const table of ["rent_component", "tenancy_occupants"]) {
+        await c.query(`DELETE FROM ${table} WHERE tenancy_id = $1 AND lower(valid) > $2::date`, [id, endDate]);
+        await c.query(
+          `UPDATE ${table} SET valid = daterange(lower(valid), $2::date + 1)
+           WHERE tenancy_id = $1 AND (upper(valid) IS NULL OR upper(valid) > $2::date + 1)`,
+          [id, endDate],
+        );
+      }
       return found((await this.read(c, "t.id = $2", [endDate, id]))[0]);
+    });
+  }
+
+  /**
+   * Deletes a tenancy entered by mistake. Refused once anything refers to it:
+   * charges, payments, documents, settlements.
+   */
+  deleteTenancy(tenantId: string, id: string): Promise<void> {
+    return this.db.run(tenantId, async (c) => {
+      found((await c.query("SELECT 1 FROM tenancy WHERE id = $1 FOR UPDATE", [id])).rows[0]);
+      const { used } = (
+        await c.query<{ used: boolean }>(
+          `SELECT EXISTS (SELECT FROM rent_charge WHERE tenancy_id = $1) OR EXISTS (SELECT FROM payment WHERE tenancy_id = $1)
+               OR EXISTS (SELECT FROM document WHERE tenancy_id = $1) OR EXISTS (SELECT FROM settlement_statement WHERE tenancy_id = $1)
+               OR EXISTS (SELECT FROM credit_refund WHERE tenancy_id = $1) AS used`,
+          [id],
+        )
+      ).rows[0]!;
+      if (used) throw new ApiError("conflict");
+      for (const table of ["tenancy_occupants", "rent_component", "tenancy_party"]) await c.query(`DELETE FROM ${table} WHERE tenancy_id = $1`, [id]);
+      await c.query("DELETE FROM tenancy WHERE id = $1", [id]);
+    });
+  }
+
+  setDeposit(tenantId: string, id: string, input: { depositCents: number | null; depositHeld?: string | null }): Promise<Tenancy> {
+    return this.db.run(tenantId, async (c) => {
+      found((await c.query("UPDATE tenancy SET deposit_cents = $2, deposit_held = $3 WHERE id = $1 RETURNING id", [id, input.depositCents, input.depositHeld ?? null])).rows[0]);
+      return found((await this.read(c, "t.id = $2", [new Date().toISOString().slice(0, 10), id]))[0]);
+    });
+  }
+
+  /** Number of people living in the unit from `validFrom` on. */
+  setOccupants(tenantId: string, id: string, input: { persons: number; validFrom: string }): Promise<Tenancy> {
+    return this.db.run(tenantId, async (c) => {
+      const row = found((await c.query<{ inside: boolean }>("SELECT term @> $2::date AS inside FROM tenancy WHERE id = $1 FOR UPDATE", [id, input.validFrom])).rows[0]);
+      if (!row.inside) throw new ApiError("validation_failed", ["validFrom"]);
+      await setValueFrom(c, tenantId, { table: "tenancy_occupants", key: { tenancy_id: id }, valueColumn: "persons" }, input.persons, input.validFrom);
+      return found((await this.read(c, "t.id = $2", [input.validFrom, id]))[0]);
     });
   }
 
@@ -137,7 +186,9 @@ export class TenancyService {
         `SELECT t.id, t.unit_id AS "unitId", lower(t.term)::text AS "startDate", (upper(t.term) - 1)::text AS "endDate",
                 t.rent_type AS "rentType",
                 (SELECT coalesce(array_agg(p.person_id ORDER BY p.person_id), '{}') FROM tenancy_party p WHERE p.tenancy_id = t.id) AS "personIds",
-                (SELECT jsonb_object_agg(r.kind, r.amount_cents::text) FROM rent_component r WHERE r.tenancy_id = t.id AND r.valid @> $1::date) AS rent
+                (SELECT jsonb_object_agg(r.kind, r.amount_cents::text) FROM rent_component r WHERE r.tenancy_id = t.id AND r.valid @> $1::date) AS rent,
+                t.deposit_cents::int AS "depositCents", t.deposit_held AS "depositHeld",
+                (SELECT o.persons FROM tenancy_occupants o WHERE o.tenancy_id = t.id AND o.valid @> $1::date) AS occupants
          FROM tenancy t WHERE ${where} ORDER BY lower(t.term), t.id`,
         params,
       )

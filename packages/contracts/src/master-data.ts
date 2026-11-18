@@ -105,7 +105,16 @@ export interface Tenancy {
   readonly personIds: readonly string[];
   /** Monthly amounts valid on the requested day; a component without an amount is missing. */
   readonly rent: Partial<Record<RentComponentKind, number>>;
+  /** Agreed deposit; null if none is recorded. */
+  readonly depositCents: number | null;
+  /** Where the deposit is held, e.g. a savings account. */
+  readonly depositHeld: string | null;
+  /** People living in the unit on the requested day; null if not recorded. */
+  readonly occupants: number | null;
 }
+
+export const tenancyDepositSchema = z.object({ depositCents: centsSchema.nullable(), depositHeld: optionalText(200) });
+export const tenancyOccupantsSchema = z.object({ persons: z.number().int().min(0).max(99), validFrom: isoDateSchema });
 
 // --- Meters ---
 

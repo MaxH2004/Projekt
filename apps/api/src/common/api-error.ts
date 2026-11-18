@@ -17,6 +17,7 @@ const STATUS: Record<ErrorCode, number> = {
   rate_limited: 429,
   file_type_not_accepted: 415,
   credit_insufficient: 409,
+  reading_not_plausible: 422,
   file_too_large: 413,
   file_storage_unavailable: 503,
   allocation_exceeds_open_amount: 409,

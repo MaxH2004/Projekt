@@ -162,7 +162,11 @@ export class SettlementService {
     const tenancies = (
       await c.query<{ id: string; unitId: string; from: string; to: string | null; tenantCount: number; advances: string }>(
         `SELECT t.id, t.unit_id AS "unitId", lower(t.term)::text AS from, (upper(t.term) - 1)::text AS to,
-                (SELECT count(*)::int FROM tenancy_party p WHERE p.tenancy_id = t.id AND p.role = 'tenant') AS "tenantCount",
+                -- Recorded occupants at the start of the tenancy's part of the period, else the named tenants.
+                coalesce(
+                  (SELECT o.persons FROM tenancy_occupants o WHERE o.tenancy_id = t.id AND o.valid @> greatest(lower(t.term), $2::date)),
+                  (SELECT count(*)::int FROM tenancy_party p WHERE p.tenancy_id = t.id AND p.role = 'tenant')
+                ) AS "tenantCount",
                 (SELECT coalesce(sum(a.amount_cents), 0)::text FROM rent_charge ch
                  JOIN payment_allocation a ON a.charge_id = ch.id JOIN payment p ON p.id = a.payment_id AND p.reversal_entry_id IS NULL
                  WHERE ch.tenancy_id = t.id AND ch.kind = 'operating_cost_advance' AND ch.period_month BETWEEN $2::date AND $3::date) AS advances

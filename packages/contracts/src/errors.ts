@@ -17,6 +17,7 @@ export const ERROR_CODES = [
   "rate_limited",
   "file_type_not_accepted",
   "credit_insufficient",
+  "reading_not_plausible",
   "file_too_large",
   "file_storage_unavailable",
   "allocation_exceeds_open_amount",

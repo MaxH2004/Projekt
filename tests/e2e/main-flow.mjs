@@ -85,10 +85,11 @@ try {
   await page.getByRole("cell", { name: "54,37 m²" }).waitFor();
 
   await page.goto(`${base}/persons`);
+  const newPerson = page.locator("section", { hasText: "Neue Person" });
   for (const [given, family] of [["Erika", "Müller"], ["Max", "Beispiel"]]) {
-    await page.getByLabel("Vorname").fill(given);
-    await page.getByLabel("Nachname").fill(family);
-    await submit(page, "Anlegen");
+    await newPerson.getByLabel("Vorname").fill(given);
+    await newPerson.getByLabel("Nachname").fill(family);
+    await submit(newPerson, "Anlegen");
     await page.getByRole("cell", { name: `${given} ${family}` }).waitFor();
   }
 
@@ -264,6 +265,38 @@ try {
   assert.equal(dialogShown, true);
   await page.getByRole("cell", { name: "Max Beispiel" }).waitFor();
   await page.goBack();
+
+  // Occupants of the tenancy, for the persons key.
+  await page.goto(`${base}/tenancies`);
+  await page.getByRole("link", { name: /EG links · Erika Müller/ }).click();
+  await page.locator("summary", { hasText: "Personen im Haushalt" }).click();
+  const occupants = page.locator("details[open]", { hasText: "Personen im Haushalt" });
+  await occupants.getByLabel("Personen im Haushalt").fill("2");
+  await submit(occupants, "Speichern");
+  await page.locator(".fact", { hasText: "Personen im Haushalt" }).getByText("2", { exact: true }).waitFor();
+
+  // A water meter with readings; a lower reading is refused.
+  await page.goto(`${base}/properties`);
+  await page.getByRole("link", { name: "Lindenstraße 5" }).click();
+  const meterForm = page.locator("section", { hasText: "Zähler hinzufügen" });
+  await meterForm.getByLabel("Für").selectOption({ label: "EG links" });
+  await meterForm.getByLabel("Art").selectOption("water_cold");
+  await meterForm.getByLabel("Einheit").selectOption("m3");
+  await meterForm.getByLabel("Zählernummer").fill("WZ-4711");
+  await submit(meterForm, "Anlegen");
+  await page.getByRole("link", { name: "Kaltwasser · WZ-4711" }).click();
+  await page.waitForURL(/\/meters\//);
+  for (const [date, value] of [[`${year}-01-01`, "100,5"], [`${month}-01`, "112,25"]]) {
+    await page.getByLabel("Ablesedatum").fill(date);
+    await page.getByLabel("Zählerstand").fill(value);
+    await submit(page, "Speichern");
+  }
+  // 112.25 - 100.5 = 11.75 m³
+  await page.getByRole("cell", { name: "11,75" }).waitFor();
+  await page.getByLabel("Ablesedatum").fill(`${year}-02-01`);
+  await page.getByLabel("Zählerstand").fill("99");
+  await submit(page, "Speichern");
+  await page.getByText("Der Zählerstand passt nicht zu den Ablesungen davor und danach.").waitFor();
 
   // Every booking above is in the audit log, attributed to the user.
   await page.goto(`${base}/account/audit`);

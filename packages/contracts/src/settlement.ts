@@ -57,7 +57,7 @@ export interface SettlementDraft {
     readonly id: string;
     readonly unitId: string;
     readonly days: number;
-    /** Number of persons named as tenants, as a starting value for the persons key. */
+    /** Starting value for the persons key: recorded occupants, else the number of named tenants. */
     readonly tenantCount: number;
     /** Covered operating cost advances charged for months of the period. */
     readonly advancesPaidCents: number;

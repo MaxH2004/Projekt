@@ -579,3 +579,8 @@ button.link-button {
 .expense-line > .muted {
   grid-column: 1 / -1;
 }
+
+.unit-edit {
+  text-align: left;
+  min-width: 260px;
+}

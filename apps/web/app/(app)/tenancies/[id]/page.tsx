@@ -6,10 +6,10 @@ import { Field } from "../../../../components/field";
 import { ActionButton, Form } from "../../../../components/form";
 import { apiGet } from "../../../../lib/api";
 import { getTranslate } from "../../../../lib/locale";
-import { formatDate, formatMonth, formatMoney, today } from "../../../../lib/money";
+import { formatDate, formatMonth, formatMoney, moneyInput, today } from "../../../../lib/money";
 import { loadPortfolio, personName } from "../../../../lib/portfolio";
 import { applyCredit, cancelCharge, recordPayment, refundCredit, reversePayment, reverseRefund } from "../../../actions/finance";
-import { changeRent, endTenancy } from "../../../actions/master-data";
+import { changeRent, deleteTenancy, endTenancy, setDeposit, setOccupants } from "../../../actions/master-data";
 
 export default async function TenancyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -39,6 +39,8 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
     [t("field.startDate"), formatDate(tenancy.startDate, locale)],
     [t("field.endDate"), tenancy.endDate ? formatDate(tenancy.endDate, locale) : t("tenancies.ongoing")],
     [t("field.rentType"), t(`rentType.${tenancy.rentType}`)],
+    [t("field.deposit"), tenancy.depositCents === null ? "–" : `${money(tenancy.depositCents)}${tenancy.depositHeld ? ` · ${tenancy.depositHeld}` : ""}`],
+    [t("field.occupants"), tenancy.occupants === null ? "–" : String(tenancy.occupants)],
     ...RENT_COMPONENT_KINDS.map((kind): [string, string] => [t(`rentComponent.${kind}`), tenancy.rent[kind] === undefined ? "–" : money(tenancy.rent[kind]!)]),
   ];
 
@@ -277,6 +279,30 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
           </Form>
         </details>
         <details className="card">
+          <summary>{t("tenancies.deposit")}</summary>
+          <p className="muted small">{t("tenancies.depositHint")}</p>
+          <Form action={setDeposit.bind(null, id)} submit={t("action.save")}>
+            <Field label={t("field.deposit")}>
+              <input name="depositCents" inputMode="decimal" defaultValue={tenancy.depositCents === null ? "" : moneyInput(tenancy.depositCents, locale)} />
+            </Field>
+            <Field label={t("field.depositHeld")}>
+              <input name="depositHeld" maxLength={200} defaultValue={tenancy.depositHeld ?? ""} />
+            </Field>
+          </Form>
+        </details>
+        <details className="card">
+          <summary>{t("tenancies.occupants")}</summary>
+          <p className="muted small">{t("tenancies.occupantsHint")}</p>
+          <Form action={setOccupants.bind(null, id)} submit={t("action.save")}>
+            <Field label={t("field.occupants")}>
+              <input name="persons" type="number" min={0} max={99} required defaultValue={tenancy.occupants ?? undefined} />
+            </Field>
+            <Field label={t("field.validFrom")}>
+              <input name="validFrom" type="date" required defaultValue={tenancy.startDate > today() ? tenancy.startDate : today()} />
+            </Field>
+          </Form>
+        </details>
+        <details className="card">
           <summary>{t("tenancies.end")}</summary>
           <Form action={endTenancy.bind(null, id)} submit={t("tenancies.end")}>
             <Field label={t("field.lastDay")}>
@@ -285,6 +311,12 @@ export default async function TenancyPage({ params }: { params: Promise<{ id: st
           </Form>
         </details>
       </div>
+      {charges.length === 0 && payments.length === 0 && documents.length === 0 ? (
+        <section className="card">
+          <p className="muted">{t("tenancies.deleteHint")}</p>
+          <ActionButton action={deleteTenancy.bind(null, id)} label={t("tenancies.delete")} confirm={t("tenancies.deleteConfirm")} />
+        </section>
+      ) : null}
     </>
   );
 }

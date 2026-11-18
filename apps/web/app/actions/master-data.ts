@@ -103,3 +103,107 @@ export async function changeRent(id: string, previous: FormState, data: FormData
     revalidatePath(`/tenancies/${id}`);
   });
 }
+
+export async function setUnitArea(unitId: string, propertyId: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    await api("PUT", `/units/${unitId}/area`, { areaCentiSqm: f.money("area"), validFrom: f.text("validFrom") });
+    revalidatePath(`/properties/${propertyId}`);
+  });
+}
+
+export async function renameUnit(unitId: string, propertyId: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    await api("PATCH", `/units/${unitId}`, { label: fields(data).text("label") });
+    revalidatePath(`/properties/${propertyId}`);
+  });
+}
+
+export async function updateBuilding(buildingId: string, propertyId: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    await api("PATCH", `/buildings/${buildingId}`, { street: f.text("street"), postalCode: f.text("postalCode"), city: f.text("city") });
+    revalidatePath(`/properties/${propertyId}`);
+  });
+}
+
+/** A meter of a unit (`unit:<id>`) or of a whole building (`building:<id>`). */
+export async function createMeter(propertyId: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    const [scope, id] = f.text("target").split(":");
+    await api("POST", "/meters", {
+      ...(scope === "unit" ? { unitId: id } : { buildingId: id }),
+      kind: f.text("kind"),
+      measure: f.text("measure"),
+      serialNumber: f.text("serialNumber"),
+    });
+    revalidatePath(`/properties/${propertyId}`);
+  });
+}
+
+export async function deleteMeter(meterId: string, propertyId: string, previous: FormState): Promise<FormState> {
+  return formAction(previous, async () => {
+    await api("DELETE", `/meters/${meterId}`);
+    revalidatePath(`/properties/${propertyId}`);
+  });
+}
+
+/** Readings are typed with a comma or a dot; the API takes a dot and up to three decimals. */
+export async function addReading(meterId: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    const value = f.text("value").replace(/\s/g, "").replace(",", ".");
+    if (!/^\d{1,11}(\.\d{1,3})?$/.test(value)) throw new InvalidInput(["value"]);
+    await api("POST", `/meters/${meterId}/readings`, { readingDate: f.text("readingDate"), value });
+    revalidatePath(`/meters/${meterId}`);
+  });
+}
+
+export async function deleteReading(readingId: string, meterId: string, previous: FormState): Promise<FormState> {
+  return formAction(previous, async () => {
+    await api("DELETE", `/meter-readings/${readingId}`);
+    revalidatePath(`/meters/${meterId}`);
+  });
+}
+
+export async function updatePerson(id: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    const kind = f.text("kind");
+    const contact = { email: f.optionalText("email"), phone: f.optionalText("phone") };
+    const body =
+      kind === "legal"
+        ? { kind, companyName: f.text("companyName"), ...contact }
+        : { kind: "natural", givenName: f.optionalText("givenName"), familyName: f.text("familyName"), ...contact };
+    await api("PUT", `/persons/${id}`, body);
+    revalidatePath("/persons");
+  });
+}
+
+export async function setDeposit(tenancyId: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    const amount = f.optionalText("depositCents");
+    await api("PUT", `/tenancies/${tenancyId}/deposit`, { depositCents: amount ? f.money("depositCents") : null, depositHeld: f.optionalText("depositHeld") });
+    revalidatePath(`/tenancies/${tenancyId}`);
+  });
+}
+
+export async function setOccupants(tenancyId: string, previous: FormState, data: FormData): Promise<FormState> {
+  return formAction(previous, async () => {
+    const f = fields(data);
+    const persons = Number(f.text("persons"));
+    if (!Number.isInteger(persons) || persons < 0 || persons > 99) throw new InvalidInput(["persons"]);
+    await api("PUT", `/tenancies/${tenancyId}/occupants`, { persons, validFrom: f.text("validFrom") });
+    revalidatePath(`/tenancies/${tenancyId}`);
+  });
+}
+
+export async function deleteTenancy(tenancyId: string, previous: FormState): Promise<FormState> {
+  const state = await formAction(previous, async () => {
+    await api("DELETE", `/tenancies/${tenancyId}`);
+  });
+  if (state.error) return state;
+  redirect("/tenancies");
+}

@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 
 /** A table whose rows carry a `valid` date range and must not overlap per key. */
 export interface VersionedTable {
-  readonly table: "unit_area" | "rent_component";
+  readonly table: "unit_area" | "rent_component" | "tenancy_occupants";
   /** Columns identifying the thing being versioned, e.g. the unit. */
   readonly key: Readonly<Record<string, string>>;
   /** Column holding the versioned value. */
